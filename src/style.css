@@ -13,3 +13,58 @@
 @media(max-width:920px){.shell{display:block}.sidebar{display:none}.workarea{padding:24px 20px calc(98px + env(safe-area-inset-bottom))}.bottom-nav{display:flex;position:fixed;z-index:5;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);padding:7px 5px calc(7px + env(safe-area-inset-bottom));justify-content:space-around;box-shadow:0 -7px 25px #0000000a}.bottom-nav .nav-item{display:grid;gap:3px;text-align:center;justify-items:center;min-width:55px;padding:7px 5px;font-size:10px}.bottom-nav .nav-icon{font-size:21px}.topbar{margin-bottom:25px}.split{grid-template-columns:1fr}.history-heading,.chart-toolbar{align-items:stretch;flex-direction:column}.auth-art{padding:55px}.auth-art h1{font-size:47px}.art-circles{flex-wrap:wrap}}
 @media(max-width:590px){.workarea{padding:19px 14px calc(97px + env(safe-area-inset-bottom))}.topbar h1{font-size:29px}.topbar .eyebrow{font-size:9px}.topbar p{font-size:12px}.avatar{display:none}.welcome-panel{padding:20px;min-height:140px}.welcome-panel h2{font-size:21px}.welcome-panel p:last-child{font-size:12px}.progress-ring{width:92px;height:92px}.progress-ring>div{width:70px;height:70px}.progress-ring b{font-size:22px}.progress-ring span{font-size:9px}.section-title{margin-top:27px}.section-title h2{font-size:21px}.habit-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.habit-card{padding:13px}.habit-card h3{font-size:15px;margin:15px 0 4px;overflow-wrap:anywhere}.habit-card p{font-size:11px;min-height:30px;margin-bottom:10px}.habit-symbol{width:30px;height:30px;font-size:16px}.habit-current{font-size:10px}.habit-input>label:not(.check){height:40px}.habit-input input[type=number]{padding:8px;font-size:14px}.habit-input label>span:last-child{padding-right:8px}.check{min-height:40px;padding:0 7px;font-size:11px;gap:5px}.check input{width:17px;height:17px}.memo-panel,.panel{padding:17px}.memo-actions{align-items:stretch;flex-direction:column}.memo-actions .primary{width:100%}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.metric{padding:17px}.metric strong{font-size:27px}.metric .small-value{font-size:19px}.chart-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filters select{max-width:150px}.history-row{grid-template-columns:1fr 44px;gap:9px}.history-date{grid-column:1;display:flex;gap:9px;align-items:center}.history-row .entry-chips{grid-column:1}.history-row .small-link{grid-column:2;grid-row:1}.panel-heading h2{font-size:20px}.auth-shell{display:block}.auth-art{display:none}.auth-card{padding:clamp(26px,8vw,46px);margin:auto;min-height:100dvh;display:flex;flex-direction:column;justify-content:center}.mobile-auth-brand{display:flex;gap:10px;align-items:center;font-weight:800;margin-bottom:80px}.modal{padding:18px}}
 @media(max-width:360px){.habit-grid{grid-template-columns:1fr}.habit-card p{min-height:auto}.week-strip{gap:3px}.topbar h1{font-size:26px}}
+
+/* ver1.01: 큰 터치 영역과 화면에 고정된 저장 버튼 */
+html,body,#app{width:100%;max-width:100%;overflow-x:clip}
+.workarea,.panel,.habit-card,.metric{min-width:0}
+.save-dock{position:fixed;z-index:8;right:clamp(20px,4vw,70px);bottom:24px;padding:7px;border-radius:15px;background:var(--surface);border:1px solid var(--line);box-shadow:0 10px 38px #152d2150}
+.save-dock .primary{font-size:16px;min-height:52px;padding:12px 24px}
+.metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.month-panel{margin-bottom:16px}
+.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;max-width:530px}
+.month-grid>span{text-align:center;display:grid;place-items:center;min-width:0;aspect-ratio:1;border-radius:10px;font-weight:700}
+.month-weekday{color:var(--muted);font-size:13px}
+.month-date{background:var(--bg);font-size:14px}
+.month-date.recorded{background:#bde6c6;color:#174b31}
+.month-date.future{background:transparent;color:var(--muted);opacity:.45}
+.danger-button{border-color:#dcaaa2;color:#a43f35}
+.danger-button.solid{background:#a43f35;border:1px solid #a43f35;color:white;padding:11px 16px;border-radius:10px;font-weight:800}
+.delete-link{color:#ae4d45}
+.delete-confirm{border:1px solid #e4bab3;border-radius:12px;background:color-mix(in srgb,var(--surface) 90%,#e9aaa0);padding:16px;line-height:1.6}
+.delete-confirm strong{font-size:15px}
+.delete-confirm p{font-size:13px;color:var(--ink);margin:7px 0 13px}
+@media(max-width:920px){
+  .save-dock{left:14px;right:14px;bottom:calc(72px + env(safe-area-inset-bottom));padding:6px}
+  .save-dock .primary{width:100%;min-height:56px;font-size:17px}
+  .workarea{padding-bottom:calc(183px + env(safe-area-inset-bottom))}
+  .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:590px){
+  body{font-size:16px}
+  .workarea{width:100%;padding:18px 14px calc(185px + env(safe-area-inset-bottom))}
+  .topbar h1{font-size:30px}.topbar p{font-size:15px}
+  .section-title p,.panel-heading p,.metric p,.data-panel p,.account-panel p,.chart-note{font-size:14px}
+  .habit-grid{grid-template-columns:1fr;gap:11px}
+  .habit-card{padding:17px;display:grid;grid-template-columns:minmax(0,1fr) minmax(115px,42%);gap:5px 10px;align-items:center}
+  .habit-head{grid-column:1/-1}.habit-card h3{font-size:19px;margin:8px 0 0}
+  .habit-card p{grid-column:1;font-size:14px;min-height:0;margin:0;color:var(--muted)}
+  .habit-input{grid-column:2;grid-row:2/4;min-width:0}
+  .habit-input>label:not(.check){height:52px}.habit-input input[type=number]{font-size:18px;padding:9px 7px;min-width:0}
+  .habit-input label>span:last-child{font-size:14px;padding-right:7px}
+  .check{min-height:52px;font-size:14px}.check input{width:21px;height:21px;flex:none}
+  .habit-current{font-size:14px}.habit-symbol{width:36px;height:36px}
+  .welcome-panel{gap:12px}.welcome-panel h2{font-size:22px}.welcome-panel p:last-child{font-size:14px}
+  .progress-ring{width:80px;height:80px}.progress-ring>div{width:61px;height:61px}.progress-ring b{font-size:19px}
+  .panel,.metric,.memo-panel{padding:18px}
+  .metric strong{font-size:27px}.metric>span{font-size:15px}
+  .filters{width:100%}.filters label{min-width:0;flex:1}.filters select{max-width:none;width:100%;font-size:16px}
+  .filters button{font-size:14px}.month-grid{gap:4px}.month-date{font-size:15px}.month-weekday{font-size:14px}
+  .setting-row{gap:8px}.setting-icon{width:35px;height:35px;flex:none}
+  .setting-row b{font-size:16px}.setting-row small{font-size:13px}.setting-row .small-link{font-size:14px;white-space:nowrap}
+  .bottom-nav .nav-item{font-size:12px;min-width:0;flex:1}.bottom-nav .nav-icon{font-size:23px}
+  input,select,textarea,.auth-card input,.modal input,.modal select{font-size:16px}
+  .form-pair{grid-template-columns:1fr}
+  .modal{max-width:100%;padding:20px}.modal label{font-size:16px}.modal .muted{font-size:14px}
+  .modal-actions{flex-wrap:wrap;justify-content:stretch}.modal-actions>button{flex:1}
+  .edit-row input:not([type=checkbox]){width:115px!important}
+}

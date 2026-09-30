@@ -72,3 +72,7 @@ export async function saveItem(item,userId) {
 export async function updateActive(item,active,userId) {
   return saveItem({...item,is_active:active},userId);
 }
+
+export async function deleteItem(itemId,userId) {
+  return checked(supabase.from('habit_items').delete().eq('id',itemId).eq('user_id',userId).select('id').single());
+}
