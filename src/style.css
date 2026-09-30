@@ -68,3 +68,38 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .modal-actions{flex-wrap:wrap;justify-content:stretch}.modal-actions>button{flex:1}
   .edit-row input:not([type=checkbox]){width:115px!important}
 }
+
+/* ver1.02: 필요한 곳에만 파랑·호박색을 사용하고 드래그/일별 차트를 지원합니다. */
+:root{--blue:#345dba;--blue-soft:#e7edff;--amber:#a45c16;--amber-soft:#fff0d5}
+:root[data-theme='dark']{--blue:#9bb9ff;--blue-soft:#253654;--amber:#ffd08d;--amber-soft:#4a3623}
+.topbar p{font-size:17px;font-weight:700;color:var(--ink)}
+.metric-grid:not(.chart-metrics) .metric:nth-child(2) strong,.chart-metrics .metric:nth-child(2) strong{color:var(--blue)}
+.metric-grid:not(.chart-metrics) .metric:nth-child(3) strong{color:var(--amber)}
+.chart-bar{fill:var(--blue)}.chart-bar.bool{fill:var(--amber)}
+.chart-scroll{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;padding-bottom:5px}
+.chart-scroll .chart{width:100%;max-width:none}
+.month-grid>button{font:inherit;aspect-ratio:1;min-width:0;border:0;cursor:pointer}
+.month-date.recorded{background:var(--blue-soft);color:var(--blue)}
+.month-date.selected{outline:3px solid var(--amber);outline-offset:-3px;font-weight:900}
+.month-date.future{cursor:default}
+.overview-note{margin-top:18px;padding-top:15px;border-top:1px solid var(--line);line-height:1.7}
+.overview-note b{color:var(--blue)}.overview-note p{white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0;color:var(--ink)}
+.history-row{grid-template-columns:145px minmax(0,1fr) 96px}
+.row-actions{display:flex;gap:12px;justify-content:flex-end;white-space:nowrap}
+.setting-row>.setting-info{display:grid;gap:4px;flex:1;min-width:0;overflow-wrap:anywhere}
+.drag-handle{flex:none;width:27px;height:42px;background:var(--blue-soft);color:var(--blue);border:0;border-radius:9px;font-size:22px;line-height:1;touch-action:none;cursor:grab;user-select:none}
+.drag-handle:active{cursor:grabbing}
+.drag-placeholder{width:27px;flex:none}
+.setting-row.dragging{background:var(--blue-soft);border-radius:12px;box-shadow:0 7px 22px #142f4640}
+.delete-day-modal p{font-size:15px;line-height:1.7}
+@media(max-width:920px){.chart-scroll{margin-right:-5px}.nav-item[data-tab='charts'].active{color:var(--blue);background:var(--blue-soft)}}
+@media(max-width:590px){
+  .topbar p{font-size:18px}
+  .history-row{grid-template-columns:minmax(0,1fr) 100px}
+  .history-row .row-actions{grid-column:2;grid-row:1;gap:10px}
+  .setting-row{gap:6px}.setting-row .setting-icon{width:31px;height:31px}
+  .setting-row>.setting-info b{font-size:15px}
+  .setting-row>.setting-info small{font-size:12px}
+  .drag-handle,.drag-placeholder{width:25px}
+  .chart-note{font-size:14px}
+}

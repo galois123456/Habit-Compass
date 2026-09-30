@@ -1,9 +1,10 @@
 import './style.css';
-import { configured,supabase,loadAll,addDay,replaceDay,saveItem,updateActive,deleteItem } from './data.js';
+import { configured,supabase,loadAll,addDay,replaceDay,saveItem,updateActive,deleteItem,saveOrder,setBoolean } from './data.js';
 import { todayKST,shiftDay,dayRange,startDay,rowsByDay,completed,streak,formatNumber,summarize,chartBuckets } from './logic.js';
 
 const root=document.querySelector('#app');
-const state={user:null,data:null,tab:'today',period:'30',chartItem:'',recordPeriod:'30',theme:localStorage.getItem('habit_theme')||'light',authMode:'login',busy:false,editDay:null,viewArchived:false};
+const state={user:null,data:null,tab:'today',period:'30',chartItem:'',recordPeriod:'30',theme:localStorage.getItem('habit_theme')||'light',authMode:'login',busy:false,editDay:null,deleteDay:null,viewArchived:false,overviewDay:null};
+let dragging=null;
 const h=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const setTheme=()=>{
   document.documentElement.dataset.theme=state.theme;
@@ -22,7 +23,7 @@ function toast(message,bad=false){
 }
 function showBusy(on){state.busy=on;document.querySelectorAll('button[type="submit"],button[data-action="import"]').forEach(b=>b.disabled=on);}
 function applyTheme(theme){state.theme=theme;localStorage.setItem('habit_theme',theme);setTheme();render();}
-const dateLabel=d=>new Intl.DateTimeFormat('ko-KR',{timeZone:'UTC',month:'long',day:'numeric',weekday:'long'}).format(new Date(`${d}T12:00:00Z`));
+const dateLabel=d=>new Intl.DateTimeFormat('ko-KR',{timeZone:'UTC',year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(new Date(`${d}T12:00:00Z`));
 
 function authView(){
   const reset=state.authMode==='reset',signup=state.authMode==='signup',password=state.authMode==='password';
@@ -37,11 +38,11 @@ function authView(){
 function layout(){
   const names={today:'오늘',overview:'요약',charts:'차트',history:'기록',settings:'설정'};
   const tabs=Object.entries(names).map(([key,label])=>`<button data-action="tab" data-tab="${key}" class="nav-item ${state.tab===key?'active':''}" aria-current="${state.tab===key?'page':'false'}"><span class="nav-icon">${({today:'＋',overview:'◫',charts:'⌁',history:'▤',settings:'⚙'})[key]}</span><span>${label}</span></button>`).join('');
-  return `<div class="shell"><aside class="sidebar"><div class="brand"><span class="logo">↗</span><span>습관 나침반<small>오늘을 기록하는 공간</small></span></div><nav aria-label="주 메뉴">${tabs}</nav><div class="side-footer"><button data-action="theme" class="text-button">${state.theme==='dark'?'☀ 라이트 모드':'☾ 다크 모드'}</button><div class="side-caption">ver1.01 · made by yoonsungho</div></div></aside>
+  return `<div class="shell"><aside class="sidebar"><div class="brand"><span class="logo">↗</span><span>습관 나침반<small>오늘을 기록하는 공간</small></span></div><nav aria-label="주 메뉴">${tabs}</nav><div class="side-footer"><button data-action="theme" class="text-button">${state.theme==='dark'?'☀ 라이트 모드':'☾ 다크 모드'}</button><div class="side-caption">ver1.02 · made by yoonsungho</div></div></aside>
   <div class="workarea"><header class="topbar"><div><div class="eyebrow">${state.tab==='today'?'YOUR DAILY ROUTINE':names[state.tab]}</div><h1>${({today:'오늘도 한 걸음',overview:'나의 흐름',charts:'기록의 변화',history:'쌓여가는 기록',settings:'나에게 맞게'})[state.tab]}</h1><p>${dateLabel(todayKST())}</p></div><div class="top-actions"><button class="icon-btn" data-action="theme" aria-label="테마 변경" title="테마 변경">${state.theme==='dark'?'☀':'☾'}</button><span class="avatar" title="${h(state.user.email)}">${h((state.user.email||'M')[0]).toUpperCase()}</span></div></header>
   <main id="content">${({today:renderToday,overview:renderOverview,charts:renderCharts,history:renderHistory,settings:renderSettings})[state.tab]()}</main>
   ${state.tab==='today'?'<div class="save-dock"><button class="primary" type="submit" form="todayForm">오늘 기록 저장 <span>→</span></button></div>':''}
-  <nav class="bottom-nav" aria-label="주 메뉴">${tabs}</nav></div></div>${state.editDay?renderEdit():''}`;
+  <nav class="bottom-nav" aria-label="주 메뉴">${tabs}</nav></div></div>${state.editDay?renderEdit():''}${state.deleteDay?renderDeleteDay():''}`;
 }
 
 function infoFor(day,item,map){const v=map.get(day)?.values[item.id];return v===undefined?'-':item.item_type==='Boolean'?(Number(v)>=1?'완료':'미완료'):`${formatNumber(v)} ${h(item.unit)}`;}
@@ -55,9 +56,9 @@ function renderToday(){
   <form id="todayForm" class="today-form"><div class="habit-grid">${active.map(item=>{
     const value=map.get(day)?.values[item.id];const done=completed(item,Number(value)||0);
     return `<article class="habit-card ${done?'done':''}"><div class="habit-head"><div class="habit-symbol">${item.item_type==='Boolean'?'✓':item.number_mode==='Record'?'◎':'↗'}</div><div class="habit-current">${done?'● ':''}${value===undefined?'미기록':infoFor(day,item,map)}</div></div><h3>${h(item.name)}</h3><p>${item.item_type==='Boolean'?'오늘 완료 체크':item.number_mode==='Record'?'측정값 기록':item.daily_goal>0?`하루 목표 ${formatNumber(item.daily_goal)} ${h(item.unit)}`:'자유롭게 기록'}</p>
-    <div class="habit-input">${item.item_type==='Boolean'?`<label class="check"><input type="checkbox" name="habit" value="${h(item.id)}" ${Number(value)>=1?'disabled':''} /><span>${Number(value)>=1?'완료됨':'완료 표시'}</span></label>`:`<label><span class="sr-only">${h(item.name)} ${item.number_mode==='Record'?'기록':'추가'}</span><input type="number" name="${h(item.id)}" step="any" min="0" inputmode="decimal" placeholder="${item.number_mode==='Record'?'오늘의 값':'추가할 양'}" /><span>${h(item.unit)}</span></label>`}</div></article>`;
+    <div class="habit-input">${item.item_type==='Boolean'?`<label class="check"><input type="checkbox" data-boolean="${h(item.id)}" ${Number(value)>=1?'checked':''} /><span>${Number(value)>=1?'완료 취소':'완료 표시'}</span></label>`:`<label><span class="sr-only">${h(item.name)} ${item.number_mode==='Record'?'기록':'추가'}</span><input type="number" name="${h(item.id)}" step="any" min="0" inputmode="decimal" placeholder="${item.number_mode==='Record'?'오늘의 값':'추가할 양'}" /><span>${h(item.unit)}</span></label>`}</div></article>`;
   }).join('')||'<p class="empty">활성화된 항목이 없습니다. 설정에서 항목을 추가하세요.</p>'}</div>
-  <div class="memo-panel"><label for="todayMemo">오늘의 한 줄 <small>선택</small></label><textarea id="todayMemo" name="memo" maxlength="5000" placeholder="오늘의 몸 상태나 작은 성취를 남겨보세요."></textarea><div class="memo-actions"><span>여러 번 저장하면 메모가 이어서 추가됩니다.</span></div></div></form>
+  <div class="memo-panel"><label for="todayMemo">오늘의 한 줄 <small>선택</small></label><textarea id="todayMemo" name="memo" maxlength="5000" placeholder="오늘의 몸 상태나 작은 성취를 남겨보세요."></textarea><div class="memo-actions"><span>완료 체크는 즉시 저장됩니다. 숫자와 메모는 아래 저장 버튼을 누르세요.</span></div></div></form>
   ${map.get(day)?.memo?`<div class="existing-memo"><span class="eyebrow">TODAY'S NOTE</span><p>${h(map.get(day).memo)}</p><button class="small-link" data-action="edit" data-day="${day}">수정하기 →</button></div>`:''}`;
 }
 
@@ -71,34 +72,38 @@ function renderOverview(){
   const monthDates=dayRange(monthStart,today);
   const hasRecord=d=>Boolean(map.get(d)?.memo?.trim())||Object.values(map.get(d)?.values||{}).some(v=>Number(v)>0);
   const monthDays=monthDates.filter(hasRecord).length;
+  const selectedDay=state.overviewDay&&state.overviewDay.slice(0,7)===today.slice(0,7)?state.overviewDay:today;
+  const selectedRow=map.get(selectedDay);
   const year=Number(today.slice(0,4)),month=Number(today.slice(5,7));
   const firstWeekday=new Date(Date.UTC(year,month-1,1)).getUTCDay();
   const lastDay=new Date(Date.UTC(year,month,0)).getUTCDate();
   let chain=0,cursor=active.some(x=>Number(map.get(today)?.values[x.id])>0)?today:shiftDay(today,-1);
   while(active.some(x=>Number(map.get(cursor)?.values[x.id])>0)){chain++;cursor=shiftDay(cursor,-1);}
   return `<div class="metric-grid"><div class="metric"><span>오늘 목표</span><strong>${done}<small> / ${target.length}</small></strong><p>오늘 달성한 목표</p></div><div class="metric"><span>이번 주 기록</span><strong>${weekDays}<small> / 7일</small></strong><p>최근 7일 기준</p></div><div class="metric"><span>이번 달 기록</span><strong>${monthDays}<small> 일</small></strong><p>이번 달 기록이 있는 날</p></div><div class="metric"><span>연속 기록</span><strong>${chain}<small> 일</small></strong><p>오늘 미입력 시 어제까지 계산</p></div></div>
-  <section class="panel month-panel"><div class="panel-heading"><h2>${month}월 기록 달력</h2><p>색이 있는 날은 습관이나 메모를 기록했습니다. ${monthDays}일 기록</p></div><div class="month-grid">${'일월화수목금토'.split('').map(w=>`<span class="month-weekday">${w}</span>`).join('')}${Array.from({length:firstWeekday},()=>'<span aria-hidden="true"></span>').join('')}${Array.from({length:lastDay},(_,i)=>{const day=monthStart.slice(0,8)+String(i+1).padStart(2,'0');return `<span class="month-date ${day>today?'future':hasRecord(day)?'recorded':''}" aria-label="${day}${hasRecord(day)?' 기록 있음':''}">${i+1}</span>`;}).join('')}</div></section>
+  <section class="panel month-panel"><div class="panel-heading"><h2>${month}월 기록 달력</h2><p>날짜를 누르면 아래에 그날의 습관과 메모가 표시됩니다. ${monthDays}일 기록</p></div><div class="month-grid">${'일월화수목금토'.split('').map(w=>`<span class="month-weekday">${w}</span>`).join('')}${Array.from({length:firstWeekday},()=>'<span aria-hidden="true"></span>').join('')}${Array.from({length:lastDay},(_,i)=>{const day=monthStart.slice(0,8)+String(i+1).padStart(2,'0');return `<button type="button" data-action="overview-day" data-day="${day}" class="month-date ${day>today?'future':hasRecord(day)?'recorded':''} ${day===selectedDay?'selected':''}" aria-label="${day}${hasRecord(day)?' 기록 있음':''}" aria-pressed="${day===selectedDay}" ${day>today?'disabled':''}>${i+1}</button>`;}).join('')}</div></section>
   <div class="split"><section class="panel"><div class="panel-heading"><h2>최근 7일</h2><p>하루에 한 항목이라도 기록한 날</p></div><div class="week-strip">${tracked.map(d=>{const on=active.some(x=>Number(map.get(d)?.values[x.id])>0);return `<div class="week-day ${on?'on':''}"><span>${'일월화수목금토'[new Date(d+'T00:00:00Z').getUTCDay()]}</span><b>${d.slice(-2)}</b><i>${on?'✓':'·'}</i></div>`;}).join('')}</div></section>
-  <section class="panel"><div class="panel-heading"><h2>오늘의 습관</h2><p>기록을 한눈에 확인하세요.</p></div><div class="status-list">${active.map(x=>{const v=map.get(today)?.values[x.id];return `<div><span class="status-dot ${completed(x,Number(v)||0)?'on':''}"></span><span>${h(x.name)}</span><b>${infoFor(today,x,map)}</b></div>`;}).join('')||'<p class="empty">습관을 추가해 시작해 보세요.</p>'}</div></section></div>`;
+  <section class="panel"><div class="panel-heading"><h2>${selectedDay===today?'오늘의 습관':`${month}월 ${Number(selectedDay.slice(-2))}일의 습관`}</h2><p>${selectedDay} 기록을 확인하세요.</p></div><div class="status-list">${state.data.items.filter(x=>x.is_active||selectedRow?.values[x.id]!==undefined).map(x=>{const v=selectedRow?.values[x.id];return `<div><span class="status-dot ${completed(x,Number(v)||0)?'on':''}"></span><span>${h(x.name)}</span><b>${infoFor(selectedDay,x,map)}</b></div>`;}).join('')||'<p class="empty">습관을 추가해 시작해 보세요.</p>'}</div><div class="overview-note"><b>${selectedDay===today?'오늘의 한 줄':'이날의 한 줄'}</b><p>${selectedRow?.memo?h(selectedRow.memo):'작성한 메모가 없습니다.'}</p></div></section></div>`;
 }
 
-function chartSvg(item,series,map){
-  const buckets=chartBuckets(item,series,map);
+function chartSvg(item,series,map,period){
+  const buckets=chartBuckets(item,series,map,period);
   if(!buckets.length) return '<div class="empty">표시할 기록이 없습니다.</div>';
   const max=Math.max(1,...buckets.map(b=>Number(b.value)||0),item.number_mode==='Accumulate'&&item.item_type==='Number'?Number(item.daily_goal):0)*1.13;
-  const w=740,hgt=272,left=44,right=12,top=18,bottom=35,base=hgt-bottom,ch=base-top,cw=w-left-right;
+  const compact=window.matchMedia('(max-width:590px)').matches&&(period==='7'||period==='10y');
+  const w=compact?360:period==='year'?1200:period==='90'?900:740;
+  const hgt=272,left=44,right=12,top=18,bottom=35,base=hgt-bottom,ch=base-top,cw=w-left-right;
   const y=v=>base-(Number(v)||0)/max*ch;
   const lines=[0,.25,.5,.75,1].map(f=>`<g><line x1="${left}" x2="${w-right}" y1="${y(max*f)}" y2="${y(max*f)}" class="grid-line"/><text x="${left-7}" y="${y(max*f)+4}" text-anchor="end" class="axis-label">${h(formatNumber(max*f))}</text></g>`).join('');
-  const goal=item.item_type==='Number'&&item.number_mode==='Accumulate'&&item.daily_goal>0&&buckets.every(b=>b.count===1)?`<line x1="${left}" x2="${w-right}" y1="${y(item.daily_goal)}" y2="${y(item.daily_goal)}" class="goal-line"/><text x="${w-right-3}" y="${y(item.daily_goal)-7}" text-anchor="end" class="goal-label">목표 ${h(formatNumber(item.daily_goal))}</text>`:'';
+  const goal=item.item_type==='Number'&&item.number_mode==='Accumulate'&&item.daily_goal>0&&period!=='10y'?`<line x1="${left}" x2="${w-right}" y1="${y(item.daily_goal)}" y2="${y(item.daily_goal)}" class="goal-line"/><text x="${w-right-3}" y="${y(item.daily_goal)-7}" text-anchor="end" class="goal-label">목표 ${h(formatNumber(item.daily_goal))}</text>`:'';
   const slot=cw/buckets.length;
   const bars=buckets.map((b,i)=>{
     if(b.value===null) return '';
     const x=left+i*slot+slot*.12,bw=Math.max(2,slot*.76),barh=Math.max(2,base-y(b.value));
-    return `<rect x="${x}" y="${base-barh}" width="${bw}" height="${barh}" rx="${Math.min(5,bw/3)}" class="${item.item_type==='Boolean'?'chart-bar bool':'chart-bar'}"><title>${h(b.label)}${b.end!==b.label?' ~ '+h(b.end):''}: ${h(formatNumber(b.value))}${item.item_type==='Boolean'?'일': ' '+h(item.unit)}</title></rect>`;
+    return `<rect x="${x}" y="${base-barh}" width="${bw}" height="${barh}" rx="${Math.min(5,bw/3)}" class="${item.item_type==='Boolean'?'chart-bar bool':'chart-bar'}"><title>${h(b.label)}${b.end!==b.label?' ~ '+h(b.end):''}: ${h(formatNumber(b.value))}${item.item_type==='Boolean'&&period==='10y'?'일':item.item_type==='Boolean'?' 완료':' '+h(item.unit)}</title></rect>`;
   }).join('');
-  const tickStep=Math.max(1,Math.ceil(buckets.length/7));
+  const tickStep=period==='10y'?1:Math.max(1,Math.ceil(buckets.length/(period==='year'?12:8)));
   const labels=buckets.map((b,i)=>i%tickStep===0||i===buckets.length-1?`<text x="${left+(i+.5)*slot}" y="${hgt-9}" text-anchor="middle" class="axis-label">${h(b.label)}</text>`:'').join('');
-  return `<svg class="chart" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${h(item.name)} ${h(series[0])}부터 ${h(series.at(-1))}까지 ${item.item_type==='Boolean'?'완료 일수':'기록값'} 차트"><title>${h(item.name)} 기록 차트</title>${lines}${goal}${bars}${labels}</svg>`;
+  return `<div class="chart-scroll"><svg class="chart" style="min-width:${period==='7'||period==='10y'?0:w}px" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${h(item.name)} ${h(series[0])}부터 ${h(series.at(-1))}까지 ${buckets.length}개의 기둥 차트"><title>${h(item.name)} 기록 차트</title>${lines}${goal}${bars}${labels}</svg></div>`;
 }
 
 function renderCharts(){
@@ -108,15 +113,15 @@ function renderCharts(){
   const stats=summarize(item,days,map,today);
   return `<div class="chart-toolbar panel"><div><span class="eyebrow">PROGRESS REPORT</span><h2>습관별 통계</h2></div><div class="filters"><label>항목<select id="chartItem">${items.map(x=>`<option value="${h(x.id)}" ${x.id===item.id?'selected':''}>${h(x.name)}</option>`).join('')}</select></label><label>기간<select id="chartPeriod">${periodOptions(state.period)}</select></label></div></div>
   <div class="metric-grid chart-metrics">${stats.map(([label,val])=>`<div class="metric"><span>${h(label)}</span><strong class="small-value">${h(val)}</strong></div>`).join('')}</div>
-  <section class="panel chart-panel"><div class="panel-heading"><h2>${h(item.name)} 추이</h2><p>${days[0]} ~ ${today} · ${item.item_type==='Boolean'?'기간별 완료 일수':item.number_mode==='Record'?'기록이 있는 날의 평균':'기간별 하루 평균'}${days.length>45?' · 기간을 묶어 표시':''}</p></div>${chartSvg(item,days,map)}<p class="chart-note">긴 기간은 구간별로 묶어 표시합니다. 통계 수치는 선택한 전체 기간의 일별 값을 기준으로 계산합니다.</p></section>`;
+  <section class="panel chart-panel"><div class="panel-heading"><h2>${h(item.name)} 추이</h2><p>${days[0]} ~ ${today} · ${state.period==='10y'?'연도별 10개 기둥':`하루에 한 기둥 · ${days.length}개`}${state.period==='10y'?item.item_type==='Boolean'?' · 연간 완료 일수':item.number_mode==='Record'?' · 연간 기록 평균':' · 연간 하루 평균':''}</p></div>${chartSvg(item,days,map,state.period)}<p class="chart-note">휴대폰에서는 차트를 좌우로 밀어 날짜별 값을 자세히 볼 수 있습니다. 최근 10년은 올해를 포함한 10개 연도를 표시합니다.</p></section>`;
 }
 
-function periodOptions(selected){return [['7','최근 7일'],['30','최근 30일'],['90','최근 90일'],['year','올해'],['all','전체']].map(([v,label])=>`<option value="${v}" ${selected===v?'selected':''}>${label}</option>`).join('');}
+function periodOptions(selected){return [['7','최근 7일'],['30','최근 30일'],['90','최근 90일'],['year','올해'],['10y','최근 10년']].map(([v,label])=>`<option value="${v}" ${selected===v?'selected':''}>${label}</option>`).join('');}
 function renderHistory(){
   const today=todayKST(),map=rowsByDay(state.data.entries,state.data.notes),start=startDay(state.recordPeriod,today,[...map.keys()]);
   const days=[...map.keys()].filter(d=>d>=start&&d<=today).sort().reverse();
   return `<div class="panel history-panel"><div class="panel-heading history-heading"><div><span class="eyebrow">YOUR JOURNAL</span><h2>기록 조회</h2><p>지난 날짜도 정확한 값으로 수정할 수 있습니다.</p></div><div class="filters"><label>기간<select id="recordPeriod">${periodOptions(state.recordPeriod)}</select></label><button class="outline" data-action="export-json">JSON 백업</button><button class="outline" data-action="export-csv">CSV</button></div></div>
-  ${days.length?`<div class="history-list">${days.map(d=>{const row=map.get(d),parts=state.data.items.filter(x=>row.values[x.id]!==undefined).map(x=>`<span class="entry-chip">${h(x.name)} <b>${infoFor(d,x,map)}</b></span>`).join('');return `<article class="history-row"><div class="history-date"><b>${d}</b><small>${dateLabel(d)}</small></div><div class="entry-chips">${parts||'<span class="muted">메모만 기록</span>'}${row.memo?`<p class="note-preview">${h(row.memo)}</p>`:''}</div><button class="small-link" data-action="edit" data-day="${d}">수정</button></article>`;}).join('')}</div>`:'<div class="empty">이 기간에 저장된 기록이 없습니다.</div>'}</div>
+  ${days.length?`<div class="history-list">${days.map(d=>{const row=map.get(d),parts=state.data.items.filter(x=>row.values[x.id]!==undefined).map(x=>`<span class="entry-chip">${h(x.name)} <b>${infoFor(d,x,map)}</b></span>`).join('');return `<article class="history-row"><div class="history-date"><b>${d}</b><small>${dateLabel(d)}</small></div><div class="entry-chips">${parts||'<span class="muted">메모만 기록</span>'}${row.memo?`<p class="note-preview">${h(row.memo)}</p>`:''}</div><div class="row-actions"><button class="small-link" data-action="edit" data-day="${d}">수정</button><button class="small-link delete-link" data-action="delete-day" data-day="${d}">삭제</button></div></article>`;}).join('')}</div>`:'<div class="empty">이 기간에 저장된 기록이 없습니다.</div>'}</div>
   <button class="outline add-past" data-action="edit" data-day="${today}">날짜를 선택해 기록 수정하기</button>`;
 }
 
@@ -125,11 +130,15 @@ function renderEdit(){
   return `<div class="modal-overlay" data-action="close-modal"><div class="modal" role="dialog" aria-modal="true" aria-label="기록 수정"><div class="modal-head"><div><span class="eyebrow">EDIT RECORD</span><h2>하루 기록 수정</h2></div><button class="icon-btn" data-action="close-modal" aria-label="닫기">✕</button></div><form id="editForm"><label>기록 날짜<input id="editDate" type="date" name="day" max="${today}" value="${state.editDay}" required /></label><p class="muted">입력한 값으로 해당 날짜의 기록을 교체합니다. 빈칸은 삭제, 체크 해제는 미완료입니다.</p><div id="editFields">${items.map(x=>`<label class="edit-row"><span>${h(x.name)} <small>${h(x.unit)}</small></span>${x.item_type==='Boolean'?`<input type="checkbox" name="${h(x.id)}" ${Number(row?.values[x.id])>=1?'checked':''}/>`:`<input type="number" name="${h(x.id)}" min="0" step="any" inputmode="decimal" value="${row?.values[x.id]??''}" placeholder="비우면 삭제" />`}</label>`).join('')}</div><label>메모<textarea name="memo" maxlength="5000">${h(row?.memo||'')}</textarea></label><button class="primary wide" type="submit">수정 내용 저장</button></form></div></div>`;
 }
 
+function renderDeleteDay(){
+  return `<div class="modal-overlay" data-action="cancel-delete-day"><div class="modal delete-day-modal" role="alertdialog" aria-modal="true" aria-label="하루 기록 삭제 확인"><div class="modal-head"><h2>${h(state.deleteDay)} 기록 삭제</h2><button class="icon-btn" data-action="cancel-delete-day" aria-label="닫기">✕</button></div><p>이 날짜의 모든 습관 기록과 메모가 영구 삭제됩니다. 개별 값만 지우려면 '수정'에서 해당 값을 비워 주세요.</p><div class="modal-actions"><button class="outline" data-action="cancel-delete-day">취소</button><button class="danger-button solid" data-action="confirm-delete-day">이 날짜의 기록 삭제</button></div></div></div>`;
+}
+
 function renderSettings(){
-  const list=state.data.items.filter(x=>x.is_active||state.viewArchived);
-  return `<div class="panel settings-panel"><div class="panel-heading"><span class="eyebrow">MAKE IT YOURS</span><h2>습관 설정</h2><p>이름을 바꿔도 과거 기록이 유지됩니다. 사용하지 않는 항목은 보관해 두세요.</p></div><div class="settings-actions"><button class="outline" data-action="new-item">+ 새 항목</button><button class="text-button" data-action="archived">${state.viewArchived?'보관 항목 숨기기':'보관 항목 보기'}</button></div><div class="settings-list">${list.map(x=>`<div class="setting-row"><div class="setting-icon">${x.item_type==='Boolean'?'✓':x.number_mode==='Record'?'◎':'↗'}</div><div><b>${h(x.name)}</b><small>${x.item_type==='Boolean'?'완료 체크':x.number_mode==='Record'?'기록형':`목표 ${formatNumber(x.daily_goal)} ${h(x.unit)}`}${x.is_active?'':' · 보관됨'}</small></div><button class="small-link" data-action="item-edit" data-id="${h(x.id)}">수정</button><button class="small-link delete-link" data-action="item-delete" data-id="${h(x.id)}">삭제</button></div>`).join('')}</div></div>
+  const list=state.data.items.filter(x=>state.viewArchived?!x.is_active:x.is_active);
+  return `<div class="panel settings-panel"><div class="panel-heading"><span class="eyebrow">MAKE IT YOURS</span><h2>${state.viewArchived?'보관한 습관':'습관 설정'}</h2><p>${state.viewArchived?'보관한 항목만 표시합니다. 다시 사용하거나 삭제할 수 있습니다.':'왼쪽 손잡이를 위아래로 끌어 순서를 바꾸세요. 이동하면 자동 저장됩니다.'}</p></div><div class="settings-actions"><button class="outline" data-action="new-item">+ 새 항목</button><button class="text-button" data-action="archived">${state.viewArchived?'사용 중 항목 보기':'보관 항목 보기'}</button></div><div class="settings-list">${list.map(x=>`<div class="setting-row" data-item-id="${h(x.id)}">${state.viewArchived?'<span class="drag-placeholder"></span>':`<button type="button" class="drag-handle" data-drag="${h(x.id)}" aria-label="${h(x.name)} 순서 이동" title="끌어서 순서 이동">⠿</button>`}<div class="setting-icon">${x.item_type==='Boolean'?'✓':x.number_mode==='Record'?'◎':'↗'}</div><div class="setting-info"><b>${h(x.name)}</b><small>${x.item_type==='Boolean'?'완료 체크':x.number_mode==='Record'?'기록형':`목표 ${formatNumber(x.daily_goal)} ${h(x.unit)}`}${x.is_active?'':' · 보관됨'}</small></div><button class="small-link" data-action="item-edit" data-id="${h(x.id)}">수정</button><button class="small-link delete-link" data-action="item-delete" data-id="${h(x.id)}">삭제</button></div>`).join('')||'<p class="empty">표시할 항목이 없습니다.</p>'}</div></div>
   <div class="panel data-panel"><span class="eyebrow">YOUR DATA</span><h2>데이터 관리</h2><p>기존 Apps Script의 JSON 백업을 가져오거나, 현재 기록을 보관할 수 있습니다.</p><div class="data-buttons"><label class="outline file-label">JSON 가져오기<input type="file" id="importFile" accept=".json,application/json" hidden /></label><button class="outline" data-action="export-json">JSON 백업</button><button class="outline" data-action="export-csv">CSV 다운로드</button></div><p class="muted small">같은 날짜와 항목의 기록은 가져온 값으로 덮어씁니다. 다른 기록은 보존됩니다.</p></div>
-  <div class="panel account-panel"><span class="eyebrow">ACCOUNT</span><h2>계정</h2><p>${h(state.user.email)}</p><button class="outline" data-action="signout">로그아웃</button></div><p class="version">ver1.01 · made by yoonsungho</p>`;
+  <div class="panel account-panel"><span class="eyebrow">ACCOUNT</span><h2>계정</h2><p>${h(state.user.email)}</p><button class="outline" data-action="signout">로그아웃</button></div><p class="version">ver1.02 · made by yoonsungho</p>`;
 }
 
 function itemModal(item){
@@ -138,7 +147,7 @@ function itemModal(item){
   document.querySelector('#itemModal')?.remove();
   const outer=document.createElement('div');outer.id='itemModal';outer.className='modal-overlay';outer.dataset.action='close-item';
   const recordCount=item?state.data.entries.filter(entry=>entry.item_id===item.id).length:0;
-  outer.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-label="습관 설정"><div class="modal-head"><h2>${item?'습관 수정':'새 습관'}</h2><button class="icon-btn" data-action="close-item" aria-label="닫기">✕</button></div><form id="itemForm" class="item-form"><label>이름<input name="name" required maxlength="80" value="${h(x.name)}" placeholder="예: 스트레칭" /></label><div class="form-pair"><label>단위<input name="unit" maxlength="24" value="${h(x.unit)}" placeholder="회, 분, kg" /></label><label>하루 목표<input name="daily_goal" type="number" min="0" step="any" value="${h(x.daily_goal)}" /></label></div><div class="form-pair"><label>종류<select name="item_type"><option value="Number" ${x.item_type==='Number'?'selected':''}>숫자 입력</option><option value="Boolean" ${x.item_type==='Boolean'?'selected':''}>완료 체크</option></select></label><label>입력 방식<select name="number_mode"><option value="Accumulate" ${x.number_mode==='Accumulate'?'selected':''}>합산형</option><option value="Record" ${x.number_mode==='Record'?'selected':''}>기록형</option></select></label></div><label>표시 순서<input name="display_order" type="number" min="0" value="${h(x.display_order)}" /></label><p class="muted">합산형은 추가할 때마다 더합니다. 기록형은 마지막 입력값으로 바뀝니다.</p><div class="modal-actions">${item?`<button type="button" class="outline" data-action="toggle-active" data-id="${h(item.id)}">${item.is_active?'보관하기':'다시 사용'}</button><button type="button" class="outline danger-button" data-action="request-delete" data-id="${h(item.id)}">삭제</button>`:''}<button type="submit" class="primary">설정 저장</button></div>${item?`<div class="delete-confirm" id="deleteConfirm" hidden><strong>${h(item.name)} 항목을 영구 삭제할까요?</strong><p>이 항목의 기록 ${recordCount}건도 함께 삭제되며 복구할 수 없습니다. 과거 기록을 남기려면 '보관하기'를 사용하세요.</p><button type="button" class="danger-button solid" data-action="confirm-delete" data-id="${h(item.id)}">기록까지 영구 삭제</button></div>`:''}</form></div>`;
+  outer.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-label="습관 설정"><div class="modal-head"><h2>${item?'습관 수정':'새 습관'}</h2><button class="icon-btn" data-action="close-item" aria-label="닫기">✕</button></div><form id="itemForm" class="item-form"><label>이름<input name="name" required maxlength="80" value="${h(x.name)}" placeholder="예: 스트레칭" /></label><div class="form-pair"><label>단위<input name="unit" maxlength="24" value="${h(x.unit)}" placeholder="회, 분, kg" /></label><label>하루 목표<input name="daily_goal" type="number" min="0" step="any" value="${h(x.daily_goal)}" /></label></div><div class="form-pair"><label>종류<select name="item_type"><option value="Number" ${x.item_type==='Number'?'selected':''}>숫자 입력</option><option value="Boolean" ${x.item_type==='Boolean'?'selected':''}>완료 체크</option></select></label><label>입력 방식<select name="number_mode"><option value="Accumulate" ${x.number_mode==='Accumulate'?'selected':''}>합산형</option><option value="Record" ${x.number_mode==='Record'?'selected':''}>기록형</option></select></label></div><p class="muted">합산형은 추가할 때마다 더합니다. 기록형은 마지막 입력값으로 바뀝니다. 표시 순서는 설정 목록에서 끌어 바꾸세요.</p><div class="modal-actions">${item?`<button type="button" class="outline" data-action="toggle-active" data-id="${h(item.id)}">${item.is_active?'보관하기':'다시 사용'}</button><button type="button" class="outline danger-button" data-action="request-delete" data-id="${h(item.id)}">삭제</button>`:''}<button type="submit" class="primary">설정 저장</button></div>${item?`<div class="delete-confirm" id="deleteConfirm" hidden><strong>${h(item.name)} 항목을 영구 삭제할까요?</strong><p>이 항목의 기록 ${recordCount}건도 함께 삭제되며 복구할 수 없습니다. 과거 기록을 남기려면 '보관하기'를 사용하세요.</p><button type="button" class="danger-button solid" data-action="confirm-delete" data-id="${h(item.id)}">기록까지 영구 삭제</button></div>`:''}</form></div>`;
   document.body.append(outer);
 }
 
@@ -170,10 +179,20 @@ document.addEventListener('click',async e=>{
   const action=node.dataset.action;
   if(action==='close-modal'&&node.classList.contains('modal-overlay')&&e.target!==node)return;
   if(action==='close-item'&&node.classList.contains('modal-overlay')&&e.target!==node)return;
+  if(action==='cancel-delete-day'&&node.classList.contains('modal-overlay')&&e.target!==node)return;
   if(action==='auth-login'||action==='auth-signup'||action==='auth-reset'){state.authMode=action.slice(5);render();}
   if(action==='theme')applyTheme(state.theme==='dark'?'light':'dark');
   if(action==='tab'){state.tab=node.dataset.tab;state.editDay=null;render();window.scrollTo(0,0);}
   if(action==='edit'){state.editDay=node.dataset.day;render();}
+  if(action==='overview-day'){state.overviewDay=node.dataset.day;render();}
+  if(action==='delete-day'){state.deleteDay=node.dataset.day;render();}
+  if(action==='cancel-delete-day'){state.deleteDay=null;render();}
+  if(action==='confirm-delete-day'){
+    const day=state.deleteDay;
+    if(!day)return;
+    try{node.disabled=true;await replaceDay(day,[],'');state.deleteDay=null;await reload();toast(`${day} 기록을 삭제했습니다.`);}
+    catch(err){node.disabled=false;toast(errorText(err),true);}
+  }
   if(action==='close-modal'){state.editDay=null;render();}
   if(action==='close-item')document.querySelector('#itemModal')?.remove();
   if(action==='new-item')itemModal(null);
@@ -211,6 +230,94 @@ document.addEventListener('change',e=>{
     state.editDay=e.target.value;render();
   }
   if(e.target.id==='importFile'&&e.target.files?.[0])importJSON(e.target.files[0]);
+  if(e.target.matches('[data-boolean]'))toggleBoolean(e.target);
+});
+
+async function toggleBoolean(input){
+  const itemId=input.dataset.boolean,day=todayKST(),next=input.checked;
+  if(state.busy){input.checked=!next;return;}
+  showBusy(true);
+  input.disabled=true;
+  try{
+    await setBoolean(itemId,day,next,state.user.id);
+    state.data.entries=state.data.entries.filter(row=>!(row.day===day&&row.item_id===itemId));
+    if(next)state.data.entries.push({user_id:state.user.id,day,item_id:itemId,value:1});
+    if(!input.isConnected)return;
+    const card=input.closest('.habit-card');
+    card.classList.toggle('done',next);
+    card.querySelector('.habit-current').textContent=next?'● 완료':'미기록';
+    input.nextElementSibling.textContent=next?'완료 취소':'완료 표시';
+    const active=state.data.items.filter(x=>x.is_active);
+    const target=active.filter(x=>x.item_type==='Boolean'||x.number_mode!=='Record'&&Number(x.daily_goal)>0);
+    const map=rowsByDay(state.data.entries,state.data.notes);
+    const achieved=target.filter(x=>completed(x,Number(map.get(day)?.values[x.id])||0)).length;
+    const percent=target.length?Math.round(100*achieved/target.length):0;
+    document.querySelector('.welcome-panel h2').textContent=achieved===target.length&&target.length?'오늘 목표를 채웠어요':'조금씩, 꾸준히 이어가요';
+    document.querySelector('.welcome-panel p:last-child').textContent=`목표 ${target.length}개 중 ${achieved}개 달성 · ${percent}%`;
+    document.querySelector('.progress-ring').style.setProperty('--progress',percent+'%');
+    document.querySelector('.progress-ring b').textContent=percent+'%';
+  }catch(err){input.checked=!next;toast(`체크 저장 실패: ${errorText(err)}`,true);}
+  finally{input.disabled=false;showBusy(false);}
+}
+
+async function persistVisibleOrder(){
+  if(state.busy)return;
+  const nodes=[...document.querySelectorAll('.settings-list .setting-row[data-item-id]')];
+  const ids=nodes.map(node=>node.dataset.itemId);
+  const active=ids.map(id=>state.data.items.find(item=>item.id===id));
+  const remaining=state.data.items.filter(item=>!ids.includes(item.id));
+  if(active.some(item=>!item))return;
+  showBusy(true);
+  try{
+    await saveOrder([...active,...remaining],state.user.id);
+    await reload();toast('표시 순서를 저장했습니다.');
+  }catch(err){await reload();toast(`순서 저장 실패: ${errorText(err)}`,true);}
+  finally{showBusy(false);}
+}
+
+document.addEventListener('pointerdown',e=>{
+  const handle=e.target.closest('.drag-handle');
+  if(!handle||state.busy)return;
+  const row=handle.closest('.setting-row'),list=row.parentElement;
+  dragging={row,list,pointerId:e.pointerId,initial:[...list.querySelectorAll('.setting-row')].map(x=>x.dataset.itemId)};
+  row.classList.add('dragging');
+  list.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+
+document.addEventListener('pointermove',e=>{
+  if(!dragging||e.pointerId!==dragging.pointerId)return;
+  const {row,list}=dragging;
+  const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('.setting-row');
+  if(target&&target!==row&&target.parentElement===list){
+    const middle=target.getBoundingClientRect().top+target.getBoundingClientRect().height/2;
+    list.insertBefore(row,e.clientY<middle?target:target.nextSibling);
+  }
+  if(e.clientY<75)window.scrollBy(0,-15);
+  if(e.clientY>window.innerHeight-90)window.scrollBy(0,15);
+});
+
+document.addEventListener('pointerup',e=>{
+  if(!dragging||e.pointerId!==dragging.pointerId)return;
+  const {row,list,initial}=dragging;
+  dragging=null;row.classList.remove('dragging');
+  const changed=[...list.querySelectorAll('.setting-row')].some((x,i)=>x.dataset.itemId!==initial[i]);
+  if(changed)persistVisibleOrder();
+});
+
+document.addEventListener('pointercancel',e=>{
+  if(!dragging||e.pointerId!==dragging.pointerId)return;
+  dragging=null;render();
+});
+
+document.addEventListener('keydown',e=>{
+  const handle=e.target.closest('.drag-handle');
+  if(!handle||!['ArrowUp','ArrowDown'].includes(e.key)||state.busy)return;
+  const row=handle.closest('.setting-row'),neighbor=e.key==='ArrowUp'?row.previousElementSibling:row.nextElementSibling;
+  if(!neighbor?.classList.contains('setting-row'))return;
+  e.preventDefault();
+  row.parentElement.insertBefore(row,e.key==='ArrowUp'?neighbor:neighbor.nextSibling);
+  persistVisibleOrder();
 });
 
 document.addEventListener('submit',async e=>{
@@ -236,9 +343,7 @@ document.addEventListener('submit',async e=>{
     if(form.id==='todayForm'){
       const values=[];
       for(const item of state.data.items.filter(x=>x.is_active)){
-        if(item.item_type==='Boolean'){
-          if(fd.getAll('habit').includes(item.id))values.push({id:item.id,value:1});
-        }else{
+        if(item.item_type!=='Boolean'){
           const raw=String(fd.get(item.id)??'').trim();
           if(raw!==''){const value=Number(raw);if(!Number.isFinite(value)||value<0)throw Error('0 이상의 숫자를 입력하세요.');values.push({id:item.id,value});}
         }
@@ -264,7 +369,7 @@ document.addEventListener('submit',async e=>{
     if(form.id==='itemForm'){
       const previous=state.data.items.find(x=>x.id===state.editItemId);
       const item={...previous,name:String(fd.get('name')||'').trim(),unit:String(fd.get('unit')||''),daily_goal:Number(fd.get('daily_goal')),
-        item_type:fd.get('item_type'),number_mode:fd.get('number_mode'),display_order:Number(fd.get('display_order')),is_active:previous?.is_active??true};
+        item_type:fd.get('item_type'),number_mode:fd.get('number_mode'),display_order:previous?.display_order??state.data.items.length+1,is_active:previous?.is_active??true};
       if(!item.name||!Number.isFinite(item.daily_goal)||item.daily_goal<0)throw Error('이름과 목표 값을 확인하세요.');
       await saveItem(item,state.user.id);document.querySelector('#itemModal')?.remove();await reload();toast('습관 설정을 저장했습니다.');
     }

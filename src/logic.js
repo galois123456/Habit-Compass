@@ -19,6 +19,7 @@ export function dayRange(start,end) {
 
 export function startDay(period,today,dates=[]) {
   if(period === 'year') return `${today.slice(0,4)}-01-01`;
+  if(period === '10y') return `${Number(today.slice(0,4))-9}-01-01`;
   if(period === 'all') return dates.filter(d=>d<=today).sort()[0] || today;
   return shiftDay(today,-(Number(period)-1));
 }
@@ -81,11 +82,16 @@ export function summarize(item,series,map,today) {
     ['현재 연속',`${streak(map,item,today)}일`]];
 }
 
-export function chartBuckets(item,series,map) {
-  const size=series.length>180?30:series.length>45?7:1;
+export function chartBuckets(item,series,map,period='30') {
   const buckets=[];
-  for(let i=0;i<series.length;i+=size) {
-    const days=series.slice(i,i+size);
+  const groups=period==='10y'
+    ? Array.from({length:10},(_,i)=>{
+        const year=Number(series.at(-1).slice(0,4))-9+i;
+        return series.filter(day=>Number(day.slice(0,4))===year);
+      })
+    : series.map(day=>[day]);
+  for(const days of groups) {
+    if(!days.length)continue;
     const raw=days.map(day=>map.get(day)?.values[item.id]);
     const recorded=raw.filter(v=>v !== undefined).map(Number);
     const value=item.item_type==='Boolean'?
@@ -93,7 +99,7 @@ export function chartBuckets(item,series,map) {
       item.number_mode==='Record'?
         (recorded.length?recorded.reduce((a,b)=>a+b,0)/recorded.length:null):
         raw.reduce((a,b)=>a+(Number(b)||0),0)/days.length;
-    buckets.push({label:days[0].slice(5),end:days.at(-1).slice(5),value,count:days.length});
+    buckets.push({label:period==='10y'?days[0].slice(0,4):days[0].slice(5),end:period==='10y'?days.at(-1).slice(0,4):days.at(-1).slice(5),value,count:days.length});
   }
   return buckets;
 }

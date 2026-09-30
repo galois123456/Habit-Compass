@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {shiftDay,dayRange,rowsByDay,completed,streak,chartBuckets,summarize} from '../src/logic.js';
+import {shiftDay,dayRange,startDay,rowsByDay,completed,streak,chartBuckets,summarize} from '../src/logic.js';
 
 const accumulate={id:'a',name:'걷기',unit:'분',daily_goal:30,item_type:'Number',number_mode:'Accumulate'};
 const record={id:'r',name:'체중',unit:'kg',daily_goal:0,item_type:'Number',number_mode:'Record'};
@@ -32,4 +32,17 @@ test('기록형 차트는 미측정일을 0kg로 계산하지 않는다',()=>{
   assert.deepEqual(summarize(record,days,map,'2026-09-27').slice(0,3),[
     ['최근 기록','77 kg'],['기록 횟수','2일'],['기록 평균','76 kg']
   ]);
+});
+
+test('기간별 막대 수는 일별 7·30·90개, 최근 10년은 연도별 10개다',()=>{
+  const today='2026-09-30',map=new Map();
+  for(const n of ['7','30','90']){
+    const days=dayRange(startDay(n,today),today);
+    assert.equal(chartBuckets(accumulate,days,map,n).length,Number(n));
+  }
+  const yearDays=dayRange(startDay('year',today),today);
+  assert.equal(chartBuckets(accumulate,yearDays,map,'year').length,yearDays.length);
+  const years=dayRange(startDay('10y',today),today);
+  const bars=chartBuckets(accumulate,years,map,'10y');
+  assert.deepEqual(bars.map(bar=>bar.label),['2017','2018','2019','2020','2021','2022','2023','2024','2025','2026']);
 });

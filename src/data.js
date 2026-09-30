@@ -76,3 +76,26 @@ export async function updateActive(item,active,userId) {
 export async function deleteItem(itemId,userId) {
   return checked(supabase.from('habit_items').delete().eq('id',itemId).eq('user_id',userId).select('id').single());
 }
+
+export async function saveOrder(items,userId) {
+  return checked(supabase.from('habit_items').upsert(items.map((item,index)=>({
+    id:item.id,user_id:userId,name:item.name,unit:item.unit,daily_goal:item.daily_goal,
+    item_type:item.item_type,number_mode:item.number_mode,is_active:item.is_active,
+    display_order:index+1
+  })),{onConflict:'id'}).select('id,display_order'));
+}
+
+export async function setBoolean(itemId,day,checked,userId) {
+  if(checked) {
+    return checkedResult(supabase.from('habit_entries').upsert({
+      user_id:userId,day,item_id:itemId,value:1,updated_at:new Date().toISOString()
+    },{onConflict:'user_id,day,item_id'}));
+  }
+  return checkedResult(supabase.from('habit_entries').delete()
+    .eq('user_id',userId).eq('day',day).eq('item_id',itemId));
+}
+
+async function checkedResult(query) {
+  const {error}=await query;
+  if(error)throw error;
+}
