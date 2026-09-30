@@ -38,7 +38,7 @@ function authView(){
 function layout(){
   const names={today:'오늘',overview:'요약',charts:'차트',history:'기록',settings:'설정'};
   const tabs=Object.entries(names).map(([key,label])=>`<button data-action="tab" data-tab="${key}" class="nav-item ${state.tab===key?'active':''}" aria-current="${state.tab===key?'page':'false'}"><span class="nav-icon">${({today:'＋',overview:'◫',charts:'⌁',history:'▤',settings:'⚙'})[key]}</span><span>${label}</span></button>`).join('');
-  return `<div class="shell"><aside class="sidebar"><div class="brand"><span class="logo">↗</span><span>습관 나침반<small>오늘을 기록하는 공간</small></span></div><nav aria-label="주 메뉴">${tabs}</nav><div class="side-footer"><button data-action="theme" class="text-button">${state.theme==='dark'?'☀ 라이트 모드':'☾ 다크 모드'}</button><div class="side-caption">ver1.02 · made by yoonsungho</div></div></aside>
+  return `<div class="shell"><aside class="sidebar"><div class="brand"><span class="logo">↗</span><span>습관 나침반<small>오늘을 기록하는 공간</small></span></div><nav aria-label="주 메뉴">${tabs}</nav><div class="side-footer"><button data-action="theme" class="text-button">${state.theme==='dark'?'☀ 라이트 모드':'☾ 다크 모드'}</button><div class="side-caption">ver1.03 · made by yoonsungho</div></div></aside>
   <div class="workarea"><header class="topbar"><div><div class="eyebrow">${state.tab==='today'?'YOUR DAILY ROUTINE':names[state.tab]}</div><h1>${({today:'오늘도 한 걸음',overview:'나의 흐름',charts:'기록의 변화',history:'쌓여가는 기록',settings:'나에게 맞게'})[state.tab]}</h1><p>${dateLabel(todayKST())}</p></div><div class="top-actions"><button class="icon-btn" data-action="theme" aria-label="테마 변경" title="테마 변경">${state.theme==='dark'?'☀':'☾'}</button><span class="avatar" title="${h(state.user.email)}">${h((state.user.email||'M')[0]).toUpperCase()}</span></div></header>
   <main id="content">${({today:renderToday,overview:renderOverview,charts:renderCharts,history:renderHistory,settings:renderSettings})[state.tab]()}</main>
   ${state.tab==='today'?'<div class="save-dock"><button class="primary" type="submit" form="todayForm">오늘 기록 저장 <span>→</span></button></div>':''}
@@ -89,21 +89,19 @@ function chartSvg(item,series,map,period){
   const buckets=chartBuckets(item,series,map,period);
   if(!buckets.length) return '<div class="empty">표시할 기록이 없습니다.</div>';
   const max=Math.max(1,...buckets.map(b=>Number(b.value)||0),item.number_mode==='Accumulate'&&item.item_type==='Number'?Number(item.daily_goal):0)*1.13;
-  const compact=window.matchMedia('(max-width:590px)').matches&&(period==='7'||period==='10y');
-  const w=compact?360:period==='year'?1200:period==='90'?900:740;
-  const hgt=272,left=44,right=12,top=18,bottom=35,base=hgt-bottom,ch=base-top,cw=w-left-right;
+  const w=740;
+  const hgt=250,left=44,right=12,top=18,bottom=12,base=hgt-bottom,ch=base-top,cw=w-left-right;
   const y=v=>base-(Number(v)||0)/max*ch;
   const lines=[0,.25,.5,.75,1].map(f=>`<g><line x1="${left}" x2="${w-right}" y1="${y(max*f)}" y2="${y(max*f)}" class="grid-line"/><text x="${left-7}" y="${y(max*f)+4}" text-anchor="end" class="axis-label">${h(formatNumber(max*f))}</text></g>`).join('');
   const goal=item.item_type==='Number'&&item.number_mode==='Accumulate'&&item.daily_goal>0&&period!=='10y'?`<line x1="${left}" x2="${w-right}" y1="${y(item.daily_goal)}" y2="${y(item.daily_goal)}" class="goal-line"/><text x="${w-right-3}" y="${y(item.daily_goal)-7}" text-anchor="end" class="goal-label">목표 ${h(formatNumber(item.daily_goal))}</text>`:'';
   const slot=cw/buckets.length;
   const bars=buckets.map((b,i)=>{
     if(b.value===null) return '';
-    const x=left+i*slot+slot*.12,bw=Math.max(2,slot*.76),barh=Math.max(2,base-y(b.value));
+    const x=left+i*slot+slot*.12,bw=slot*.76,barh=Math.max(1,base-y(b.value));
     return `<rect x="${x}" y="${base-barh}" width="${bw}" height="${barh}" rx="${Math.min(5,bw/3)}" class="${item.item_type==='Boolean'?'chart-bar bool':'chart-bar'}"><title>${h(b.label)}${b.end!==b.label?' ~ '+h(b.end):''}: ${h(formatNumber(b.value))}${item.item_type==='Boolean'&&period==='10y'?'일':item.item_type==='Boolean'?' 완료':' '+h(item.unit)}</title></rect>`;
   }).join('');
-  const tickStep=period==='10y'?1:Math.max(1,Math.ceil(buckets.length/(period==='year'?12:8)));
-  const labels=buckets.map((b,i)=>i%tickStep===0||i===buckets.length-1?`<text x="${left+(i+.5)*slot}" y="${hgt-9}" text-anchor="middle" class="axis-label">${h(b.label)}</text>`:'').join('');
-  return `<div class="chart-scroll"><svg class="chart" style="min-width:${period==='7'||period==='10y'?0:w}px" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${h(item.name)} ${h(series[0])}부터 ${h(series.at(-1))}까지 ${buckets.length}개의 기둥 차트"><title>${h(item.name)} 기록 차트</title>${lines}${goal}${bars}${labels}</svg></div>`;
+  const trend=period==='year'&&item.item_type==='Number'?`<path class="chart-trend" d="${buckets.map((b,i)=>b.value===null?'':`${i===0||buckets[i-1].value===null?'M':'L'} ${left+(i+.5)*slot} ${y(b.value)}`).join(' ')}"/>`:'';
+  return `<div class="chart-scroll"><svg class="chart" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${h(item.name)} ${h(series[0])}부터 ${h(series.at(-1))}까지 ${buckets.length}개의 기둥 차트"><title>${h(item.name)} 기록 차트</title>${lines}${goal}${bars}${trend}</svg></div>`;
 }
 
 function renderCharts(){
@@ -113,7 +111,7 @@ function renderCharts(){
   const stats=summarize(item,days,map,today);
   return `<div class="chart-toolbar panel"><div><span class="eyebrow">PROGRESS REPORT</span><h2>습관별 통계</h2></div><div class="filters"><label>항목<select id="chartItem">${items.map(x=>`<option value="${h(x.id)}" ${x.id===item.id?'selected':''}>${h(x.name)}</option>`).join('')}</select></label><label>기간<select id="chartPeriod">${periodOptions(state.period)}</select></label></div></div>
   <div class="metric-grid chart-metrics">${stats.map(([label,val])=>`<div class="metric"><span>${h(label)}</span><strong class="small-value">${h(val)}</strong></div>`).join('')}</div>
-  <section class="panel chart-panel"><div class="panel-heading"><h2>${h(item.name)} 추이</h2><p>${days[0]} ~ ${today} · ${state.period==='10y'?'연도별 10개 기둥':`하루에 한 기둥 · ${days.length}개`}${state.period==='10y'?item.item_type==='Boolean'?' · 연간 완료 일수':item.number_mode==='Record'?' · 연간 기록 평균':' · 연간 하루 평균':''}</p></div>${chartSvg(item,days,map,state.period)}<p class="chart-note">휴대폰에서는 차트를 좌우로 밀어 날짜별 값을 자세히 볼 수 있습니다. 최근 10년은 올해를 포함한 10개 연도를 표시합니다.</p></section>`;
+  <section class="panel chart-panel"><div class="panel-heading"><h2>${h(item.name)} 추이</h2><p>${days[0]} ~ ${today} · ${state.period==='10y'?'연도별 10개 기둥':`하루에 한 기둥 · ${days.length}개`}${state.period==='10y'?item.item_type==='Boolean'?' · 연간 완료 일수':item.number_mode==='Record'?' · 연간 기록 평균':' · 연간 하루 평균':''}</p></div>${chartSvg(item,days,map,state.period)}<p class="chart-note">선택한 기간의 전체 흐름을 한 화면에 표시합니다.</p></section>`;
 }
 
 function periodOptions(selected){return [['7','최근 7일'],['30','최근 30일'],['90','최근 90일'],['year','올해'],['10y','최근 10년']].map(([v,label])=>`<option value="${v}" ${selected===v?'selected':''}>${label}</option>`).join('');}
@@ -138,7 +136,7 @@ function renderSettings(){
   const list=state.data.items.filter(x=>state.viewArchived?!x.is_active:x.is_active);
   return `<div class="panel settings-panel"><div class="panel-heading"><span class="eyebrow">MAKE IT YOURS</span><h2>${state.viewArchived?'보관한 습관':'습관 설정'}</h2><p>${state.viewArchived?'보관한 항목만 표시합니다. 다시 사용하거나 삭제할 수 있습니다.':'왼쪽 손잡이를 위아래로 끌어 순서를 바꾸세요. 이동하면 자동 저장됩니다.'}</p></div><div class="settings-actions"><button class="outline" data-action="new-item">+ 새 항목</button><button class="text-button" data-action="archived">${state.viewArchived?'사용 중 항목 보기':'보관 항목 보기'}</button></div><div class="settings-list">${list.map(x=>`<div class="setting-row" data-item-id="${h(x.id)}">${state.viewArchived?'<span class="drag-placeholder"></span>':`<button type="button" class="drag-handle" data-drag="${h(x.id)}" aria-label="${h(x.name)} 순서 이동" title="끌어서 순서 이동">⠿</button>`}<div class="setting-icon">${x.item_type==='Boolean'?'✓':x.number_mode==='Record'?'◎':'↗'}</div><div class="setting-info"><b>${h(x.name)}</b><small>${x.item_type==='Boolean'?'완료 체크':x.number_mode==='Record'?'기록형':`목표 ${formatNumber(x.daily_goal)} ${h(x.unit)}`}${x.is_active?'':' · 보관됨'}</small></div><button class="small-link" data-action="item-edit" data-id="${h(x.id)}">수정</button><button class="small-link delete-link" data-action="item-delete" data-id="${h(x.id)}">삭제</button></div>`).join('')||'<p class="empty">표시할 항목이 없습니다.</p>'}</div></div>
   <div class="panel data-panel"><span class="eyebrow">YOUR DATA</span><h2>데이터 관리</h2><p>기존 Apps Script의 JSON 백업을 가져오거나, 현재 기록을 보관할 수 있습니다.</p><div class="data-buttons"><label class="outline file-label">JSON 가져오기<input type="file" id="importFile" accept=".json,application/json" hidden /></label><button class="outline" data-action="export-json">JSON 백업</button><button class="outline" data-action="export-csv">CSV 다운로드</button></div><p class="muted small">같은 날짜와 항목의 기록은 가져온 값으로 덮어씁니다. 다른 기록은 보존됩니다.</p></div>
-  <div class="panel account-panel"><span class="eyebrow">ACCOUNT</span><h2>계정</h2><p>${h(state.user.email)}</p><button class="outline" data-action="signout">로그아웃</button></div><p class="version">ver1.02 · made by yoonsungho</p>`;
+  <div class="panel account-panel"><span class="eyebrow">ACCOUNT</span><h2>계정</h2><p>${h(state.user.email)}</p><button class="outline" data-action="signout">로그아웃</button></div><p class="version">ver1.03 · made by yoonsungho</p>`;
 }
 
 function itemModal(item){

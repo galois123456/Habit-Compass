@@ -69,15 +69,16 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .edit-row input:not([type=checkbox]){width:115px!important}
 }
 
-/* ver1.02: 필요한 곳에만 파랑·호박색을 사용하고 드래그/일별 차트를 지원합니다. */
+/* ver1.03: 필요한 곳에만 파랑·호박색을 사용하고 드래그/일별 차트를 지원합니다. */
 :root{--blue:#345dba;--blue-soft:#e7edff;--amber:#a45c16;--amber-soft:#fff0d5}
 :root[data-theme='dark']{--blue:#9bb9ff;--blue-soft:#253654;--amber:#ffd08d;--amber-soft:#4a3623}
 .topbar p{font-size:17px;font-weight:700;color:var(--ink)}
 .metric-grid:not(.chart-metrics) .metric:nth-child(2) strong,.chart-metrics .metric:nth-child(2) strong{color:var(--blue)}
 .metric-grid:not(.chart-metrics) .metric:nth-child(3) strong{color:var(--amber)}
 .chart-bar{fill:var(--blue)}.chart-bar.bool{fill:var(--amber)}
-.chart-scroll{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;padding-bottom:5px}
-.chart-scroll .chart{width:100%;max-width:none}
+.chart-scroll{width:100%;max-width:100%;overflow:hidden}
+.chart-scroll .chart{width:100%;max-width:100%;min-width:0}
+.chart-trend{fill:none;stroke:#aa673b;stroke-width:1.5;stroke-linejoin:round;pointer-events:none}
 .month-grid>button{font:inherit;aspect-ratio:1;min-width:0;border:0;cursor:pointer}
 .month-date.recorded{background:var(--blue-soft);color:var(--blue)}
 .month-date.selected{outline:3px solid var(--amber);outline-offset:-3px;font-weight:900}
@@ -92,7 +93,7 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
 .drag-placeholder{width:27px;flex:none}
 .setting-row.dragging{background:var(--blue-soft);border-radius:12px;box-shadow:0 7px 22px #142f4640}
 .delete-day-modal p{font-size:15px;line-height:1.7}
-@media(max-width:920px){.chart-scroll{margin-right:-5px}.nav-item[data-tab='charts'].active{color:var(--blue);background:var(--blue-soft)}}
+@media(max-width:920px){.nav-item[data-tab='charts'].active{color:var(--blue);background:var(--blue-soft)}}
 @media(max-width:590px){
   .topbar p{font-size:18px}
   .history-row{grid-template-columns:minmax(0,1fr) 100px}
