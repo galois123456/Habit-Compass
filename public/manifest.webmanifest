@@ -1,0 +1,14 @@
+{
+  "name": "습관 나침반 · 운동과 일상 기록",
+  "short_name": "습관 나침반",
+  "description": "운동과 습관 기록, 목표와 통계",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f8f5",
+  "theme_color": "#f6f8f5",
+  "icons": [
+    {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
