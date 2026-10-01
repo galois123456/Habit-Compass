@@ -69,7 +69,7 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .edit-row input:not([type=checkbox]){width:115px!important}
 }
 
-/* ver1.03: 필요한 곳에만 파랑·호박색을 사용하고 드래그/일별 차트를 지원합니다. */
+/* ver1.04: 필요한 곳에만 파랑·호박색을 사용하고 드래그/일별 차트를 지원합니다. */
 :root{--blue:#345dba;--blue-soft:#e7edff;--amber:#a45c16;--amber-soft:#fff0d5}
 :root[data-theme='dark']{--blue:#9bb9ff;--blue-soft:#253654;--amber:#ffd08d;--amber-soft:#4a3623}
 .topbar p{font-size:17px;font-weight:700;color:var(--ink)}
