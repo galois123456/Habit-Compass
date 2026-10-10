@@ -69,7 +69,7 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .edit-row input:not([type=checkbox]){width:115px!important}
 }
 
-/* ver1.04: 필요한 곳에만 파랑·호박색을 사용하고 드래그/일별 차트를 지원합니다. */
+/* ver1.05: 요일별 습관 일정 */
 :root{--blue:#345dba;--blue-soft:#e7edff;--amber:#a45c16;--amber-soft:#fff0d5}
 :root[data-theme='dark']{--blue:#9bb9ff;--blue-soft:#253654;--amber:#ffd08d;--amber-soft:#4a3623}
 .topbar p{font-size:17px;font-weight:700;color:var(--ink)}
@@ -93,6 +93,23 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
 .drag-placeholder{width:27px;flex:none}
 .setting-row.dragging{background:var(--blue-soft);border-radius:12px;box-shadow:0 7px 22px #142f4640}
 .delete-day-modal p{font-size:15px;line-height:1.7}
+.schedule-field{border:1px solid var(--line);border-radius:13px;padding:15px;margin:0;min-width:0}
+.schedule-field legend{font-size:15px;font-weight:800;padding:0 5px}
+.schedule-field small{display:block;margin-top:10px;color:var(--muted);line-height:1.5}
+.weekday-options{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.weekday-option{display:block!important;position:relative;cursor:pointer;text-align:center}
+.weekday-option input{position:absolute;opacity:0;width:100%;height:100%;inset:0;cursor:pointer}
+.weekday-option span{display:grid;place-items:center;min-height:43px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:16px;font-weight:800}
+.weekday-option input:checked+span{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
+.weekday-option input:focus-visible+span{outline:3px solid var(--amber);outline-offset:2px}
+.schedule-badge{display:inline-block;color:var(--blue);background:var(--blue-soft);font-size:12px;font-weight:750;border-radius:8px;padding:3px 8px;margin:3px 0 0;line-height:1.5}
+.habit-card.rest-day{border-style:dashed}.habit-card.rest-day .schedule-badge{background:var(--amber-soft);color:var(--amber)}
+.status-list small{color:var(--muted);font-size:.78em}
+.habit-current{display:flex;align-items:center;justify-content:flex-end;gap:5px}
+.achievement-mark{display:inline-grid;place-items:center;flex:none;width:20px;height:20px;border:2px solid currentColor;border-radius:50%;color:var(--forest2)}
+.achievement-mark.scheduled>span{width:9px;height:9px;border-radius:50%;background:currentColor}
+.status-list .achievement-mark{width:17px;height:17px}
+.status-list .achievement-mark.scheduled>span{width:7px;height:7px}
 @media(max-width:920px){.nav-item[data-tab='charts'].active{color:var(--blue);background:var(--blue-soft)}}
 @media(max-width:590px){
   .topbar p{font-size:18px}
@@ -103,4 +120,8 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .setting-row>.setting-info small{font-size:12px}
   .drag-handle,.drag-placeholder{width:25px}
   .chart-note{font-size:14px}
+  .weekday-options{gap:4px}.weekday-option span{min-height:42px}
+  .schedule-badge{font-size:11px}
+  .habit-current .achievement-mark{width:17px;height:17px}
+  .habit-current .achievement-mark.scheduled>span{width:7px;height:7px}
 }

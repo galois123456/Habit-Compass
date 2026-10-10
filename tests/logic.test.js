@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {shiftDay,dayRange,startDay,rowsByDay,completed,streak,chartBuckets,summarize} from '../src/logic.js';
+import {shiftDay,dayRange,startDay,rowsByDay,completed,streak,chartBuckets,summarize,scheduledOn,scheduleLabel} from '../src/logic.js';
 
 const accumulate={id:'a',name:'걷기',unit:'분',daily_goal:30,item_type:'Number',number_mode:'Accumulate'};
 const record={id:'r',name:'체중',unit:'kg',daily_goal:0,item_type:'Number',number_mode:'Record'};
@@ -45,4 +45,26 @@ test('기간별 막대 수는 일별 7·30·90개, 최근 10년은 연도별 10�
   const years=dayRange(startDay('10y',today),today);
   const bars=chartBuckets(accumulate,years,map,'10y');
   assert.deepEqual(bars.map(bar=>bar.label),['2017','2018','2019','2020','2021','2022','2023','2024','2025','2026']);
+});
+
+test('선택 요일 표시와 휴식일 제외 달성률 및 연속 횟수',()=>{
+  const weekdays={...check,schedule_days:31};
+  assert.equal(scheduleLabel(weekdays),'주중');
+  assert.equal(scheduleLabel({...check,schedule_days:96}),'주말');
+  assert.equal(scheduleLabel({...check,schedule_days:1}),'월요일');
+  assert.equal(scheduleLabel(check),'매일');
+  assert.equal(scheduledOn(weekdays,'2026-09-26'),false);
+  assert.equal(scheduledOn(weekdays,'2026-09-28'),true);
+  const days=dayRange('2026-09-25','2026-09-28');
+  const map=rowsByDay([
+    {day:'2026-09-25',item_id:'b',value:1},
+    {day:'2026-09-26',item_id:'b',value:1},
+    {day:'2026-09-28',item_id:'b',value:1}
+  ],[]);
+  assert.equal(summarize(weekdays,days,map,'2026-09-28')[1][1],'100%');
+  assert.equal(streak(map,weekdays,'2026-09-28'),2);
+  const bars=chartBuckets(weekdays,days,map);
+  assert.equal(bars[1].scheduled,false);
+  assert.equal(bars[1].achieved,true);
+  assert.equal(bars[1].value,1);
 });

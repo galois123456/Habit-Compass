@@ -63,7 +63,7 @@ export async function saveItem(item,userId) {
   const payload = {
     user_id:userId,name:item.name.trim(),unit:item.unit.trim(),daily_goal:item.item_type === 'Boolean' ? 1 : Number(item.daily_goal),
     item_type:item.item_type,number_mode:item.item_type === 'Boolean' ? 'Accumulate' : item.number_mode,
-    display_order:Number(item.display_order),is_active:item.is_active
+    display_order:Number(item.display_order),is_active:item.is_active,schedule_days:Number(item.schedule_days??127)
   };
   if (item.id) payload.id = item.id;
   return checked(supabase.from('habit_items').upsert(payload).select().single());
@@ -80,7 +80,7 @@ export async function deleteItem(itemId,userId) {
 export async function saveOrder(items,userId) {
   return checked(supabase.from('habit_items').upsert(items.map((item,index)=>({
     id:item.id,user_id:userId,name:item.name,unit:item.unit,daily_goal:item.daily_goal,
-    item_type:item.item_type,number_mode:item.number_mode,is_active:item.is_active,
+    item_type:item.item_type,number_mode:item.number_mode,is_active:item.is_active,schedule_days:Number(item.schedule_days??127),
     display_order:index+1
   })),{onConflict:'id'}).select('id,display_order'));
 }

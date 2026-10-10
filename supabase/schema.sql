@@ -11,10 +11,16 @@ create table if not exists public.habit_items (
   number_mode text not null default 'Accumulate' check (number_mode in ('Accumulate','Record')),
   is_active boolean not null default true,
   display_order integer not null default 0,
+  schedule_days smallint not null default 127 check (schedule_days between 1 and 127),
   created_at timestamptz not null default now(),
   unique(user_id, name),
   unique(id, user_id)
 );
+
+-- 기존 설치에도 안전하게 적용됩니다.
+alter table public.habit_items add column if not exists schedule_days smallint not null default 127;
+alter table public.habit_items drop constraint if exists habit_items_schedule_days_check;
+alter table public.habit_items add constraint habit_items_schedule_days_check check (schedule_days between 1 and 127);
 
 create table if not exists public.habit_entries (
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,

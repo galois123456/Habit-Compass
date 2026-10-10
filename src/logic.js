@@ -37,6 +37,24 @@ export function rowsByDay(entries,notes) {
   return map;
 }
 
+// 월요일부터 일요일까지 하위 7비트로 저장합니다. 기존 항목은 매일(127)입니다.
+export const weekdayNames=['월','화','수','목','금','토','일'];
+export function weekdayMask(item) {
+  const value=Number(item?.schedule_days);
+  return Number.isInteger(value)&&value>=1&&value<=127?value:127;
+}
+export function scheduledOn(item,day) {
+  const weekday=(new Date(`${day}T00:00:00Z`).getUTCDay()+6)%7;
+  return Boolean(weekdayMask(item)&(1<<weekday));
+}
+export function scheduleLabel(item) {
+  const mask=weekdayMask(item);
+  if(mask===127)return '매일';
+  if(mask===31)return '주중';
+  if(mask===96)return '주말';
+  return weekdayNames.filter((_,i)=>mask&(1<<i)).map(d=>`${d}요일`).join(' · ');
+}
+
 export function completed(item,value) {
   if(item.item_type === 'Boolean') return value >= 1;
   if(item.number_mode === 'Record') return value > 0;
@@ -45,9 +63,17 @@ export function completed(item,value) {
 
 export function streak(map,item,today) {
   const success = d => completed(item, Number(map.get(d)?.values[item.id]) || 0);
-  let cursor = success(today) ? today : shiftDay(today,-1);
+  let cursor=today;
+  while(!scheduledOn(item,cursor))cursor=shiftDay(cursor,-1);
+  if(!success(cursor)){
+    cursor=shiftDay(cursor,-1);
+    while(!scheduledOn(item,cursor))cursor=shiftDay(cursor,-1);
+  }
   let count=0;
-  while(success(cursor)) {count++;cursor=shiftDay(cursor,-1);}
+  while(success(cursor)) {
+    count++;cursor=shiftDay(cursor,-1);
+    while(!scheduledOn(item,cursor))cursor=shiftDay(cursor,-1);
+  }
   return count;
 }
 
@@ -56,8 +82,9 @@ export function formatNumber(n) {
 }
 
 export function summarize(item,series,map,today) {
-  const recorded=series.filter(d=>map.get(d)?.values[item.id] !== undefined);
-  const values=series.map(d=>Number(map.get(d)?.values[item.id]) || 0);
+  const eligible=series.filter(d=>scheduledOn(item,d));
+  const recorded=eligible.filter(d=>map.get(d)?.values[item.id] !== undefined);
+  const values=eligible.map(d=>Number(map.get(d)?.values[item.id]) || 0);
   const success=values.filter(v=>completed(item,v)).length;
   const best=values.reduce((acc,v)=>{
     acc.now=completed(item,v)?acc.now+1:0;
@@ -65,7 +92,7 @@ export function summarize(item,series,map,today) {
     return acc;
   },{now:0,best:0}).best;
   if(item.item_type === 'Boolean') return [
-    ['완료',`${success}일`],['완료율',`${Math.round(success / Math.max(1,series.length)*100)}%`],
+    ['완료',`${success}일`],['완료율',`${Math.round(success / Math.max(1,eligible.length)*100)}%`],
     ['현재 연속',`${streak(map,item,today)}일`],['기간 내 최장',`${best}일`]
   ];
   if(item.number_mode === 'Record') {
@@ -77,8 +104,8 @@ export function summarize(item,series,map,today) {
       ['최고 기록',measured.length?`${formatNumber(Math.max(...measured))} ${item.unit}`:'-']];
   }
   return [['기간 합계',`${formatNumber(values.reduce((a,b)=>a+b,0))} ${item.unit}`],
-    ['하루 평균',`${formatNumber(values.reduce((a,b)=>a+b,0)/Math.max(1,series.length))} ${item.unit}`],
-    ['목표 달성',`${success}일`],['달성률',`${item.daily_goal>0?Math.round(success/Math.max(1,series.length)*100):0}%`],
+    ['하루 평균',`${formatNumber(values.reduce((a,b)=>a+b,0)/Math.max(1,eligible.length))} ${item.unit}`],
+    ['목표 달성',`${success}일`],['달성률',`${item.daily_goal>0?Math.round(success/Math.max(1,eligible.length)*100):0}%`],
     ['현재 연속',`${streak(map,item,today)}일`]];
 }
 
@@ -92,14 +119,16 @@ export function chartBuckets(item,series,map,period='30') {
     : series.map(day=>[day]);
   for(const days of groups) {
     if(!days.length)continue;
+    const scheduled=days.filter(day=>scheduledOn(item,day));
     const raw=days.map(day=>map.get(day)?.values[item.id]);
     const recorded=raw.filter(v=>v !== undefined).map(Number);
     const value=item.item_type==='Boolean'?
       raw.filter(v=>Number(v)>=1).length:
       item.number_mode==='Record'?
         (recorded.length?recorded.reduce((a,b)=>a+b,0)/recorded.length:null):
-        raw.reduce((a,b)=>a+(Number(b)||0),0)/days.length;
-    buckets.push({label:period==='10y'?days[0].slice(0,4):days[0].slice(5),end:period==='10y'?days.at(-1).slice(0,4):days.at(-1).slice(5),value,count:days.length});
+        (scheduled.length?raw.reduce((a,b)=>a+(Number(b)||0),0)/scheduled.length:null);
+    const shown=scheduled.length||recorded.length?value:null;
+    buckets.push({label:period==='10y'?days[0].slice(0,4):days[0].slice(5),end:period==='10y'?days.at(-1).slice(0,4):days.at(-1).slice(5),value:shown,count:scheduled.length,scheduled:period==='10y'?null:scheduled.length>0,achieved:period==='10y'?false:completed(item,Number(raw[0])||0)});
   }
   return buckets;
 }
