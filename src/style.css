@@ -69,7 +69,7 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .edit-row input:not([type=checkbox]){width:115px!important}
 }
 
-/* ver1.05: 요일별 습관 일정 */
+/* ver1.06: 요일 배지를 화면 크기에 따라 배치합니다. */
 :root{--blue:#345dba;--blue-soft:#e7edff;--amber:#a45c16;--amber-soft:#fff0d5}
 :root[data-theme='dark']{--blue:#9bb9ff;--blue-soft:#253654;--amber:#ffd08d;--amber-soft:#4a3623}
 .topbar p{font-size:17px;font-weight:700;color:var(--ink)}
@@ -102,8 +102,11 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
 .weekday-option span{display:grid;place-items:center;min-height:43px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:16px;font-weight:800}
 .weekday-option input:checked+span{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
 .weekday-option input:focus-visible+span{outline:3px solid var(--amber);outline-offset:2px}
-.schedule-badge{display:inline-block;color:var(--blue);background:var(--blue-soft);font-size:12px;font-weight:750;border-radius:8px;padding:3px 8px;margin:3px 0 0;line-height:1.5}
-.habit-card.rest-day{border-style:dashed}.habit-card.rest-day .schedule-badge{background:var(--amber-soft);color:var(--amber)}
+.schedule-chips{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0}
+.schedule-chip{display:grid;place-items:center;flex:none;width:25px;height:25px;border-radius:7px;background:var(--blue-soft);color:var(--blue);font-size:11px;font-weight:800;line-height:1}
+.schedule-mobile{display:none}
+.habit-card p .schedule-desktop{margin-left:6px;vertical-align:middle}
+.habit-card.rest-day{border-style:dashed}.habit-card.rest-day .schedule-chip{background:var(--amber-soft);color:var(--amber)}
 .status-list small{color:var(--muted);font-size:.78em}
 .habit-current{display:flex;align-items:center;justify-content:flex-end;gap:5px}
 .achievement-mark{display:inline-grid;place-items:center;flex:none;width:20px;height:20px;border:2px solid currentColor;border-radius:50%;color:var(--forest2)}
@@ -121,7 +124,12 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .drag-handle,.drag-placeholder{width:25px}
   .chart-note{font-size:14px}
   .weekday-options{gap:4px}.weekday-option span{min-height:42px}
-  .schedule-badge{font-size:11px}
+  .habit-head{justify-content:flex-start;flex-wrap:wrap;column-gap:5px;row-gap:5px}
+  .habit-head .habit-symbol,.schedule-mobile .schedule-chip{width:30px;height:30px;flex:none}
+  .schedule-mobile{display:inline-flex;gap:3px;flex:0 1 auto}
+  .schedule-mobile .schedule-chip{font-size:13px;border-radius:8px}
+  .schedule-desktop{display:none}
+  .habit-current{margin-left:auto}
   .habit-current .achievement-mark{width:17px;height:17px}
   .habit-current .achievement-mark.scheduled>span{width:7px;height:7px}
 }

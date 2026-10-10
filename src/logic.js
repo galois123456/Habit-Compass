@@ -50,9 +50,9 @@ export function scheduledOn(item,day) {
 export function scheduleLabel(item) {
   const mask=weekdayMask(item);
   if(mask===127)return '매일';
-  if(mask===31)return '주중';
+  if(mask===31)return '평일';
   if(mask===96)return '주말';
-  return weekdayNames.filter((_,i)=>mask&(1<<i)).map(d=>`${d}요일`).join(' · ');
+  return weekdayNames.filter((_,i)=>mask&(1<<i)).join(' ');
 }
 
 export function completed(item,value) {

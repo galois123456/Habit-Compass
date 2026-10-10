@@ -49,9 +49,10 @@ test('기간별 막대 수는 일별 7·30·90개, 최근 10년은 연도별 10�
 
 test('선택 요일 표시와 휴식일 제외 달성률 및 연속 횟수',()=>{
   const weekdays={...check,schedule_days:31};
-  assert.equal(scheduleLabel(weekdays),'주중');
+  assert.equal(scheduleLabel(weekdays),'평일');
   assert.equal(scheduleLabel({...check,schedule_days:96}),'주말');
-  assert.equal(scheduleLabel({...check,schedule_days:1}),'월요일');
+  assert.equal(scheduleLabel({...check,schedule_days:1}),'월');
+  assert.equal(scheduleLabel({...check,schedule_days:5}),'월 수');
   assert.equal(scheduleLabel(check),'매일');
   assert.equal(scheduledOn(weekdays,'2026-09-26'),false);
   assert.equal(scheduledOn(weekdays,'2026-09-28'),true);
