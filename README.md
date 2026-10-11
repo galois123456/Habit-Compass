@@ -1,6 +1,6 @@
 > **이번 버전은 하나의 Supabase 프로젝트를 두 앱이 공유하도록 준비한 배포본입니다. 먼저 `공통프로젝트_연결안내.md`를 읽고 `supabase/shared-schema.sql`을 실행하세요. 아래의 개별 설치 안내보다 공통 연결 안내를 우선합니다.**
 
-# 습관 나침반 ver1.06
+# 습관 나침반 ver1.07
 
 기존 `Code.gs` + `index.html`을 Supabase 인증·데이터베이스와 Vercel 정적 웹앱으로 다시 만든 프로젝트입니다. Apps Script는 이 버전에서 사용하지 않습니다. 개인용으로 가입·로그인할 수 있으며, 로그아웃하지 않으면 같은 브라우저의 로그인 상태를 유지합니다.
 
@@ -44,7 +44,7 @@ npm run dev
 
 백업 파일 형식은 기존 `exportJSON()`의 `{settings: [{ItemName,Unit,DailyGoal,IsActive,DisplayOrder,ItemType,NumberMode,ScheduleDays}], records: [{Date,Memo,...항목명}]}`과 호환됩니다. 기존 앱이 빈 기록과 오래된 항목 이름을 포함하는 경우, 그 이름으로 보관 항목이 추가될 수 있습니다. **새 앱으로 기록이 실제 옮겨진 것을 확인하기 전에는 기존 Apps Script 자료를 지우지 마세요.**
 
-## 기존 설치에서 ver1.06로 업데이트
+## 기존 설치에서 ver1.07로 업데이트
 
 **ver1.04 이하에서 올린다면 Supabase SQL Editor에서 `supabase/add-schedule-days.sql`을 먼저 실행하세요.** 기존 표에 `schedule_days` 열만 추가하며 기록은 지우지 않습니다. 기존 습관은 자동으로 ‘매일’로 설정됩니다. 이후 프로젝트 파일을 GitHub에 올리고 Vercel 배포가 끝나면 새로고침하세요. 이미 통합 Supabase 프로젝트를 사용 중이라면 투두리스트 쪽 SQL은 다시 실행할 필요가 없습니다. 새 프로젝트를 처음 설치할 때는 공통 연결 안내의 `shared-schema.sql`을 사용하세요.
 
@@ -79,4 +79,4 @@ Supabase Auth가 비밀번호를 처리합니다. 웹앱 코드에 비밀번호�
 | `supabase/schema.sql` | 데이터 표, 보안 정책, 원자적 기록 저장 함수 |
 | `public/manifest.webmanifest` | 홈 화면 바로가기 설정 |
 
-현재 버전은 `ver1.06`입니다. 이전 버전을 이미 배포했다면 앱 파일을 GitHub에 올리고 Vercel의 새 배포가 완료된 뒤 새로고침하세요. ver1.05에서 업데이트한다면 SQL을 다시 실행할 필요가 없습니다. ver1.04 이하에서는 위의 요일 설정 SQL을 한 번 실행하세요. 공통 프로젝트로 연결하는 방법은 `공통프로젝트_연결안내.md`를 따르세요. 화면 하단에 `made by yoonsungho`가 표시됩니다.
+현재 버전은 `ver1.07`입니다. 이전 버전을 이미 배포했다면 앱 파일을 GitHub에 올리고 Vercel의 새 배포가 완료된 뒤 새로고침하세요. ver1.05에서 업데이트한다면 SQL을 다시 실행할 필요가 없습니다. ver1.04 이하에서는 위의 요일 설정 SQL을 한 번 실행하세요. 공통 프로젝트로 연결하는 방법은 `공통프로젝트_연결안내.md`를 따르세요. 화면 하단에 `made by yoonsungho`가 표시됩니다.

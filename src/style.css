@@ -69,7 +69,7 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .edit-row input:not([type=checkbox]){width:115px!important}
 }
 
-/* ver1.06: 요일 배지를 화면 크기에 따라 배치합니다. */
+/* ver1.07: 요일 배지를 화면 크기에 따라 배치합니다. */
 :root{--blue:#345dba;--blue-soft:#e7edff;--amber:#a45c16;--amber-soft:#fff0d5}
 :root[data-theme='dark']{--blue:#9bb9ff;--blue-soft:#253654;--amber:#ffd08d;--amber-soft:#4a3623}
 .topbar p{font-size:17px;font-weight:700;color:var(--ink)}
@@ -106,7 +106,11 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
 .schedule-chip{display:grid;place-items:center;flex:none;width:25px;height:25px;border-radius:7px;background:var(--blue-soft);color:var(--blue);font-size:11px;font-weight:800;line-height:1}
 .schedule-mobile{display:none}
 .habit-card p .schedule-desktop{margin-left:6px;vertical-align:middle}
-.habit-card.rest-day{border-style:dashed}.habit-card.rest-day .schedule-chip{background:var(--amber-soft);color:var(--amber)}
+.habit-card.rest-day{border-style:dashed}
+.schedule-chip.schedule-weekday{background:#e2f3e8;color:#21643d}
+.schedule-chip.schedule-weekend{background:#ffe6e6;color:#ae3434}
+:root[data-theme='dark'] .schedule-chip.schedule-weekday{background:#203e2d;color:#a1e3b5}
+:root[data-theme='dark'] .schedule-chip.schedule-weekend{background:#4b272b;color:#ffaaaa}
 .status-list small{color:var(--muted);font-size:.78em}
 .habit-current{display:flex;align-items:center;justify-content:flex-end;gap:5px}
 .achievement-mark{display:inline-grid;place-items:center;flex:none;width:20px;height:20px;border:2px solid currentColor;border-radius:50%;color:var(--forest2)}

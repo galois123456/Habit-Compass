@@ -38,7 +38,7 @@ function authView(){
 function layout(){
   const names={today:'오늘',overview:'요약',charts:'차트',history:'기록',settings:'설정'};
   const tabs=Object.entries(names).map(([key,label])=>`<button data-action="tab" data-tab="${key}" class="nav-item ${state.tab===key?'active':''}" aria-current="${state.tab===key?'page':'false'}"><span class="nav-icon">${({today:'＋',overview:'◫',charts:'⌁',history:'▤',settings:'⚙'})[key]}</span><span>${label}</span></button>`).join('');
-  return `<div class="shell"><aside class="sidebar"><div class="brand"><span class="logo">↗</span><span>습관 나침반<small>오늘을 기록하는 공간</small></span></div><nav aria-label="주 메뉴">${tabs}</nav><div class="side-footer"><button data-action="theme" class="text-button">${state.theme==='dark'?'☀ 라이트 모드':'☾ 다크 모드'}</button><div class="side-caption">ver1.06 · made by yoonsungho</div></div></aside>
+  return `<div class="shell"><aside class="sidebar"><div class="brand"><span class="logo">↗</span><span>습관 나침반<small>오늘을 기록하는 공간</small></span></div><nav aria-label="주 메뉴">${tabs}</nav><div class="side-footer"><button data-action="theme" class="text-button">${state.theme==='dark'?'☀ 라이트 모드':'☾ 다크 모드'}</button><div class="side-caption">ver1.07 · made by yoonsungho</div></div></aside>
   <div class="workarea"><header class="topbar"><div><div class="eyebrow">${state.tab==='today'?'YOUR DAILY ROUTINE':names[state.tab]}</div><h1>${({today:'오늘도 한 걸음',overview:'나의 흐름',charts:'기록의 변화',history:'쌓여가는 기록',settings:'나에게 맞게'})[state.tab]}</h1><p>${dateLabel(todayKST())}</p></div><div class="top-actions"><button class="icon-btn" data-action="theme" aria-label="테마 변경" title="테마 변경">${state.theme==='dark'?'☀':'☾'}</button><span class="avatar" title="${h(state.user.email)}">${h((state.user.email||'M')[0]).toUpperCase()}</span></div></header>
   <main id="content">${({today:renderToday,overview:renderOverview,charts:renderCharts,history:renderHistory,settings:renderSettings})[state.tab]()}</main>
   ${state.tab==='today'?'<div class="save-dock"><button class="primary" type="submit" form="todayForm">오늘 기록 저장 <span>→</span></button></div>':''}
@@ -49,7 +49,7 @@ function infoFor(day,item,map){const v=map.get(day)?.values[item.id];return v===
 function scheduleChips(item,placement){
   const mask=weekdayMask(item);
   const labels=mask===127?['매일']:mask===31?['평일']:mask===96?['주말']:weekdayNames.filter((_,index)=>mask&(1<<index));
-  return `<span class="schedule-chips ${placement}" aria-label="실천 요일: ${h(scheduleLabel(item))}">${labels.map(label=>`<span class="schedule-chip" aria-hidden="true">${h(label)}</span>`).join('')}</span>`;
+  return `<span class="schedule-chips ${placement}" aria-label="실천 요일: ${h(scheduleLabel(item))}">${labels.map(label=>`<span class="schedule-chip ${label==='평일'?'schedule-weekday':label==='주말'?'schedule-weekend':''}" aria-hidden="true">${h(label)}</span>`).join('')}</span>`;
 }
 function achievementMark(item,day,value){
   if(!completed(item,Number(value)||0))return '';
@@ -69,7 +69,7 @@ function renderToday(){
     <div class="habit-input">${item.item_type==='Boolean'?`<label class="check"><input type="checkbox" data-boolean="${h(item.id)}" ${Number(value)>=1?'checked':''} /><span>${Number(value)>=1?'완료 취소':'완료 표시'}</span></label>`:`<label><span class="sr-only">${h(item.name)} ${item.number_mode==='Record'?'기록':'추가'}</span><input type="number" name="${h(item.id)}" step="any" min="0" inputmode="decimal" placeholder="${item.number_mode==='Record'?'오늘의 값':'추가할 양'}" /><span>${h(item.unit)}</span></label>`}</div></article>`;
   }).join('')||'<p class="empty">활성화된 항목이 없습니다. 설정에서 항목을 추가하세요.</p>'}</div>
   <div class="memo-panel"><label for="todayMemo">오늘의 한 줄 <small>선택</small></label><textarea id="todayMemo" name="memo" maxlength="5000" placeholder="오늘의 몸 상태나 작은 성취를 남겨보세요."></textarea><div class="memo-actions"><span>완료 체크는 즉시 저장됩니다. 숫자와 메모는 아래 저장 버튼을 누르세요.</span></div></div></form>
-  ${map.get(day)?.memo?`<div class="existing-memo"><span class="eyebrow">TODAY'S NOTE</span><p>${h(map.get(day).memo)}</p><button class="small-link" data-action="edit" data-day="${day}">수정하기 →</button></div>`:''}`;
+  <div class="existing-memo">${map.get(day)?.memo?`<span class="eyebrow">TODAY'S NOTE</span><p>${h(map.get(day).memo)}</p>`:''}<button class="small-link" data-action="edit" data-day="${day}">수정하기 →</button></div>`;
 }
 
 function renderOverview(){
@@ -146,7 +146,7 @@ function renderSettings(){
   const list=state.data.items.filter(x=>state.viewArchived?!x.is_active:x.is_active);
   return `<div class="panel settings-panel"><div class="panel-heading"><span class="eyebrow">MAKE IT YOURS</span><h2>${state.viewArchived?'보관한 습관':'습관 설정'}</h2><p>${state.viewArchived?'보관한 항목만 표시합니다. 다시 사용하거나 삭제할 수 있습니다.':'왼쪽 손잡이를 위아래로 끌어 순서를 바꾸세요. 이동하면 자동 저장됩니다.'}</p></div><div class="settings-actions"><button class="outline" data-action="new-item">+ 새 항목</button><button class="text-button" data-action="archived">${state.viewArchived?'사용 중 항목 보기':'보관 항목 보기'}</button></div><div class="settings-list">${list.map(x=>`<div class="setting-row" data-item-id="${h(x.id)}">${state.viewArchived?'<span class="drag-placeholder"></span>':`<button type="button" class="drag-handle" data-drag="${h(x.id)}" aria-label="${h(x.name)} 순서 이동" title="끌어서 순서 이동">⠿</button>`}<div class="setting-icon">${x.item_type==='Boolean'?'✓':x.number_mode==='Record'?'◎':'↗'}</div><div class="setting-info"><b>${h(x.name)}</b><small>${x.item_type==='Boolean'?'완료 체크':x.number_mode==='Record'?'기록형':`목표 ${formatNumber(x.daily_goal)} ${h(x.unit)}`} · ${h(scheduleLabel(x))}${x.is_active?'':' · 보관됨'}</small></div><button class="small-link" data-action="item-edit" data-id="${h(x.id)}">수정</button><button class="small-link delete-link" data-action="item-delete" data-id="${h(x.id)}">삭제</button></div>`).join('')||'<p class="empty">표시할 항목이 없습니다.</p>'}</div></div>
   <div class="panel data-panel"><span class="eyebrow">YOUR DATA</span><h2>데이터 관리</h2><p>기존 Apps Script의 JSON 백업을 가져오거나, 현재 기록을 보관할 수 있습니다.</p><div class="data-buttons"><label class="outline file-label">JSON 가져오기<input type="file" id="importFile" accept=".json,application/json" hidden /></label><button class="outline" data-action="export-json">JSON 백업</button><button class="outline" data-action="export-csv">CSV 다운로드</button></div><p class="muted small">같은 날짜와 항목의 기록은 가져온 값으로 덮어씁니다. 다른 기록은 보존됩니다.</p></div>
-  <div class="panel account-panel"><span class="eyebrow">ACCOUNT</span><h2>계정</h2><p>${h(state.user.email)}</p><button class="outline" data-action="signout">로그아웃</button></div><p class="version">ver1.06 · made by yoonsungho</p>`;
+  <div class="panel account-panel"><span class="eyebrow">ACCOUNT</span><h2>계정</h2><p>${h(state.user.email)}</p><button class="outline" data-action="signout">로그아웃</button></div><p class="version">ver1.07 · made by yoonsungho</p>`;
 }
 
 function itemModal(item){
