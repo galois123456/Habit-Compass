@@ -1,10 +1,28 @@
 import './style.css';
-import { configured,supabase,loadAll,addDay,replaceDay,saveItem,updateActive,deleteItem,saveOrder,setBoolean } from './data.js';
-import { todayKST,shiftDay,dayRange,startDay,rowsByDay,completed,streak,formatNumber,summarize,chartBuckets,weekdayNames,weekdayMask,scheduledOn,scheduleLabel } from './logic.js';
+import { configured,supabase,loadAll,addDay,replaceDay,saveItem,updateActive,deleteItem,saveOrder,setBoolean,trackSave } from './data.js';
+import { todayKST,shiftDay,dayRange,startDay,rowsByDay,completed,streak,formatNumber,summarize,chartBuckets,weekdayNames,weekdayMask,scheduledOn,scheduleLabel,changeSchedule } from './logic.js';
 
 const root=document.querySelector('#app');
 const state={user:null,data:null,tab:'today',period:'30',chartItem:'',recordPeriod:'30',theme:localStorage.getItem('habit_theme')||'light',authMode:'login',busy:false,editDay:null,deleteDay:null,viewArchived:false,overviewDay:null};
 let dragging=null;
+let saveStatus='idle';
+const saveLabels={idle:'저장 대기',saving:'저장 중',saved:'저장 완료',failed:'저장 실패'};
+function refreshSaveBadge(){
+  const badge=document.querySelector('#saveStatus');if(!badge)return;
+  const dirty=[...document.querySelectorAll('#todayForm input[type="number"],#todayForm textarea')].some(x=>x.value.trim()!=='');
+  const unsaved=dirty&&!['saving','failed'].includes(saveStatus);
+  badge.textContent=unsaved?'입력 내용 미저장':saveLabels[saveStatus];badge.dataset.status=unsaved?'saving':saveStatus;
+}
+window.addEventListener('habit-save',event=>{saveStatus=event.detail;refreshSaveBadge();});
+document.addEventListener('input',event=>{if(event.target.closest('#todayForm'))refreshSaveBadge();});
+function todayFilter(){return localStorage.getItem('habit_view_'+state.user?.id)||'all';}
+function applyTodayFilter(){
+  const mode=todayFilter(),day=todayKST(),map=rowsByDay(state.data.entries,state.data.notes);
+  let count=0;
+  document.querySelectorAll('[data-habit-card]').forEach(card=>{const item=state.data.items.find(x=>x.id===card.dataset.habitCard);const visible=mode==='scheduled'?scheduledOn(item,day):mode==='incomplete'?!completed(item,Number(map.get(day)?.values[item.id])||0):true;card.hidden=!visible;if(visible)count++;});
+  const empty=document.querySelector('#filterEmpty');if(empty)empty.hidden=count>0;
+}
+
 const h=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const setTheme=()=>{
   document.documentElement.dataset.theme=state.theme;
@@ -38,8 +56,8 @@ function authView(){
 function layout(){
   const names={today:'오늘',overview:'요약',charts:'차트',history:'기록',settings:'설정'};
   const tabs=Object.entries(names).map(([key,label])=>`<button data-action="tab" data-tab="${key}" class="nav-item ${state.tab===key?'active':''}" aria-current="${state.tab===key?'page':'false'}"><span class="nav-icon">${({today:'＋',overview:'◫',charts:'⌁',history:'▤',settings:'⚙'})[key]}</span><span>${label}</span></button>`).join('');
-  return `<div class="shell"><aside class="sidebar"><div class="brand"><span class="logo">↗</span><span>습관 나침반<small>오늘을 기록하는 공간</small></span></div><nav aria-label="주 메뉴">${tabs}</nav><div class="side-footer"><button data-action="theme" class="text-button">${state.theme==='dark'?'☀ 라이트 모드':'☾ 다크 모드'}</button><div class="side-caption">ver1.07 · made by yoonsungho</div></div></aside>
-  <div class="workarea"><header class="topbar"><div><div class="eyebrow">${state.tab==='today'?'YOUR DAILY ROUTINE':names[state.tab]}</div><h1>${({today:'오늘도 한 걸음',overview:'나의 흐름',charts:'기록의 변화',history:'쌓여가는 기록',settings:'나에게 맞게'})[state.tab]}</h1><p>${dateLabel(todayKST())}</p></div><div class="top-actions"><button class="icon-btn" data-action="theme" aria-label="테마 변경" title="테마 변경">${state.theme==='dark'?'☀':'☾'}</button><span class="avatar" title="${h(state.user.email)}">${h((state.user.email||'M')[0]).toUpperCase()}</span></div></header>
+  return `<div class="shell"><aside class="sidebar"><div class="brand"><span class="logo">↗</span><span>습관 나침반<small>오늘을 기록하는 공간</small></span></div><nav aria-label="주 메뉴">${tabs}</nav><div class="side-footer"><button data-action="theme" class="text-button">${state.theme==='dark'?'☀ 라이트 모드':'☾ 다크 모드'}</button><div class="side-caption">ver1.09 · made by yoonsungho</div></div></aside>
+  <div class="workarea"><header class="topbar"><div><div class="eyebrow">${state.tab==='today'?'YOUR DAILY ROUTINE':names[state.tab]}</div><h1>${({today:'오늘도 한 걸음',overview:'나의 흐름',charts:'기록의 변화',history:'쌓여가는 기록',settings:'나에게 맞게'})[state.tab]}</h1><span id="saveStatus" class="save-status" data-status="${saveStatus}" role="status" aria-live="polite">${saveLabels[saveStatus]}</span><p>${dateLabel(todayKST())}</p></div><div class="top-actions"><button class="icon-btn" data-action="theme" aria-label="테마 변경" title="테마 변경">${state.theme==='dark'?'☀':'☾'}</button><span class="avatar" title="${h(state.user.email)}">${h((state.user.email||'M')[0]).toUpperCase()}</span></div></header>
   <main id="content">${({today:renderToday,overview:renderOverview,charts:renderCharts,history:renderHistory,settings:renderSettings})[state.tab]()}</main>
   ${state.tab==='today'?'<div class="save-dock"><button class="primary" type="submit" form="todayForm">오늘 기록 저장 <span>→</span></button></div>':''}
   <nav class="bottom-nav" aria-label="주 메뉴">${tabs}</nav></div></div>${state.editDay?renderEdit():''}${state.deleteDay?renderDeleteDay():''}`;
@@ -49,7 +67,7 @@ function infoFor(day,item,map){const v=map.get(day)?.values[item.id];return v===
 function scheduleChips(item,placement){
   const mask=weekdayMask(item);
   const labels=mask===127?['매일']:mask===31?['평일']:mask===96?['주말']:weekdayNames.filter((_,index)=>mask&(1<<index));
-  return `<span class="schedule-chips ${placement}" aria-label="실천 요일: ${h(scheduleLabel(item))}">${labels.map(label=>`<span class="schedule-chip ${label==='평일'?'schedule-weekday':label==='주말'?'schedule-weekend':''}" aria-hidden="true">${h(label)}</span>`).join('')}</span>`;
+  return `<span class="schedule-chips ${placement}" aria-label="실천 요일: ${h(scheduleLabel(item))}">${labels.map(label=>`<span class="schedule-chip ${label==='평일'?'schedule-weekday':label==='주말'?'schedule-weekend':label==='매일'?'':'schedule-day'}" aria-hidden="true">${h(label)}</span>`).join('')}</span>`;
 }
 function achievementMark(item,day,value){
   if(!completed(item,Number(value)||0))return '';
@@ -62,13 +80,13 @@ function renderToday(){
   const achieved=applicable.filter(x=>completed(x,Number(map.get(day)?.values[x.id])||0)).length;
   const percent=applicable.length?Math.round(100*achieved/applicable.length):0;
   return `<div class="welcome-panel"><div><p class="eyebrow">TODAY'S PROGRESS</p><h2>${achieved===applicable.length&&applicable.length?'오늘 목표를 채웠어요':'조금씩, 꾸준히 이어가요'}</h2><p>목표 ${applicable.length}개 중 ${achieved}개 달성 · ${percent}%</p></div><div class="progress-ring" style="--progress:${percent}%"><div><b>${percent}%</b><span>오늘 달성</span></div></div></div>
-  <div class="section-title"><div><h2>오늘 기록하기</h2><p>입력값은 기존 기록에 더해집니다. 체중 같은 기록형은 새 값으로 바뀝니다.</p></div></div>
+  <div class="section-title"><div><h2>오늘 기록하기</h2><label class="today-filter">보기 <select id="todayFilter">${[['all','전체'],['scheduled','오늘 예정'],['incomplete','미완료']].map(([value,label])=>`<option value="${value}" ${todayFilter()===value?'selected':''}>${label}</option>`).join('')}</select></label><p>입력값은 기존 기록에 더해집니다. 체중 같은 기록형은 새 값으로 바뀝니다.</p></div></div>
   <form id="todayForm" class="today-form"><div class="habit-grid">${active.map(item=>{
     const value=map.get(day)?.values[item.id];const done=completed(item,Number(value)||0);const isScheduled=scheduledOn(item,day);
-    return `<article class="habit-card ${done?'done':''} ${isScheduled?'':'rest-day'}"><div class="habit-head"><div class="habit-symbol">${item.item_type==='Boolean'?'✓':item.number_mode==='Record'?'◎':'↗'}</div>${scheduleChips(item,'schedule-mobile')}<div class="habit-current">${achievementMark(item,day,value)}${value===undefined?'미기록':infoFor(day,item,map)}</div></div><h3>${h(item.name)}</h3><p><span>${item.item_type==='Boolean'?'오늘 완료 체크':item.number_mode==='Record'?'측정값 기록':item.daily_goal>0?`하루 목표 ${formatNumber(item.daily_goal)} ${h(item.unit)}`:'자유롭게 기록'}</span>${scheduleChips(item,'schedule-desktop')}</p>
+    return `<article data-habit-card="${h(item.id)}" class="habit-card ${done?'done':''} ${isScheduled?'':'rest-day'}"><div class="habit-head"><div class="habit-symbol">${item.item_type==='Boolean'?'✓':item.number_mode==='Record'?'◎':'↗'}</div>${scheduleChips(item,'schedule-mobile')}<div class="habit-current">${achievementMark(item,day,value)}${value===undefined?'미기록':infoFor(day,item,map)}</div></div><h3>${h(item.name)}</h3><p><span>${item.item_type==='Boolean'?'오늘 완료 체크':item.number_mode==='Record'?'측정값 기록':item.daily_goal>0?`하루 목표 ${formatNumber(item.daily_goal)} ${h(item.unit)}`:'자유롭게 기록'}</span>${scheduleChips(item,'schedule-desktop')}</p>
     <div class="habit-input">${item.item_type==='Boolean'?`<label class="check"><input type="checkbox" data-boolean="${h(item.id)}" ${Number(value)>=1?'checked':''} /><span>${Number(value)>=1?'완료 취소':'완료 표시'}</span></label>`:`<label><span class="sr-only">${h(item.name)} ${item.number_mode==='Record'?'기록':'추가'}</span><input type="number" name="${h(item.id)}" step="any" min="0" inputmode="decimal" placeholder="${item.number_mode==='Record'?'오늘의 값':'추가할 양'}" /><span>${h(item.unit)}</span></label>`}</div></article>`;
   }).join('')||'<p class="empty">활성화된 항목이 없습니다. 설정에서 항목을 추가하세요.</p>'}</div>
-  <div class="memo-panel"><label for="todayMemo">오늘의 한 줄 <small>선택</small></label><textarea id="todayMemo" name="memo" maxlength="5000" placeholder="오늘의 몸 상태나 작은 성취를 남겨보세요."></textarea><div class="memo-actions"><span>완료 체크는 즉시 저장됩니다. 숫자와 메모는 아래 저장 버튼을 누르세요.</span></div></div></form>
+  <p id="filterEmpty" class="empty" hidden>선택한 보기에 해당하는 습관이 없습니다.</p><div class="memo-panel"><label for="todayMemo">오늘의 한 줄 <small>선택</small></label><textarea id="todayMemo" name="memo" maxlength="5000" placeholder="오늘의 몸 상태나 작은 성취를 남겨보세요."></textarea><div class="memo-actions"><span>완료 체크는 즉시 저장됩니다. 숫자와 메모는 아래 저장 버튼을 누르세요.</span></div></div></form>
   <div class="existing-memo">${map.get(day)?.memo?`<span class="eyebrow">TODAY'S NOTE</span><p>${h(map.get(day).memo)}</p>`:''}<button class="small-link" data-action="edit" data-day="${day}">수정하기 →</button></div>`;
 }
 
@@ -92,7 +110,7 @@ function renderOverview(){
   return `<div class="metric-grid"><div class="metric"><span>오늘 목표</span><strong>${done}<small> / ${target.length}</small></strong><p>오늘 달성한 목표</p></div><div class="metric"><span>이번 주 기록</span><strong>${weekDays}<small> / 7일</small></strong><p>최근 7일 기준</p></div><div class="metric"><span>이번 달 기록</span><strong>${monthDays}<small> 일</small></strong><p>이번 달 기록이 있는 날</p></div><div class="metric"><span>연속 기록</span><strong>${chain}<small> 일</small></strong><p>오늘 미입력 시 어제까지 계산</p></div></div>
   <section class="panel month-panel"><div class="panel-heading"><h2>${month}월 기록 달력</h2><p>날짜를 누르면 아래에 그날의 습관과 메모가 표시됩니다. ${monthDays}일 기록</p></div><div class="month-grid">${'일월화수목금토'.split('').map(w=>`<span class="month-weekday">${w}</span>`).join('')}${Array.from({length:firstWeekday},()=>'<span aria-hidden="true"></span>').join('')}${Array.from({length:lastDay},(_,i)=>{const day=monthStart.slice(0,8)+String(i+1).padStart(2,'0');return `<button type="button" data-action="overview-day" data-day="${day}" class="month-date ${day>today?'future':hasRecord(day)?'recorded':''} ${day===selectedDay?'selected':''}" aria-label="${day}${hasRecord(day)?' 기록 있음':''}" aria-pressed="${day===selectedDay}" ${day>today?'disabled':''}>${i+1}</button>`;}).join('')}</div></section>
   <div class="split"><section class="panel"><div class="panel-heading"><h2>최근 7일</h2><p>하루에 한 항목이라도 기록한 날</p></div><div class="week-strip">${tracked.map(d=>{const on=active.some(x=>Number(map.get(d)?.values[x.id])>0);return `<div class="week-day ${on?'on':''}"><span>${'일월화수목금토'[new Date(d+'T00:00:00Z').getUTCDay()]}</span><b>${d.slice(-2)}</b><i>${on?'✓':'·'}</i></div>`;}).join('')}</div></section>
-  <section class="panel"><div class="panel-heading"><h2>${selectedDay===today?'오늘의 습관':`${month}월 ${Number(selectedDay.slice(-2))}일의 습관`}</h2><p>${selectedDay} 기록을 확인하세요.</p></div><div class="status-list">${state.data.items.filter(x=>x.is_active&&(scheduledOn(x,selectedDay)||selectedRow?.values[x.id]!==undefined)||selectedRow?.values[x.id]!==undefined).map(x=>{const v=selectedRow?.values[x.id];return `<div>${achievementMark(x,selectedDay,v)||'<span class="status-dot"></span>'}<span>${h(x.name)} <small>${h(scheduleLabel(x))}</small></span><b>${infoFor(selectedDay,x,map)}</b></div>`;}).join('')||'<p class="empty">습관을 추가해 시작해 보세요.</p>'}</div><div class="overview-note"><b>${selectedDay===today?'오늘의 한 줄':'이날의 한 줄'}</b><p>${selectedRow?.memo?h(selectedRow.memo):'작성한 메모가 없습니다.'}</p></div></section></div>`;
+  <section class="panel"><div class="panel-heading"><h2>${selectedDay===today?'오늘의 습관':`${month}월 ${Number(selectedDay.slice(-2))}일의 습관`}</h2><p>${selectedDay} 기록을 확인하세요.</p></div><div class="status-list">${state.data.items.filter(x=>x.is_active&&(scheduledOn(x,selectedDay)||selectedRow?.values[x.id]!==undefined)||selectedRow?.values[x.id]!==undefined).map(x=>{const v=selectedRow?.values[x.id];return `<div>${achievementMark(x,selectedDay,v)||'<span class="status-dot"></span>'}<span>${h(x.name)} <small>${h(scheduleLabel(x,selectedDay))}</small></span><b>${infoFor(selectedDay,x,map)}</b></div>`;}).join('')||'<p class="empty">습관을 추가해 시작해 보세요.</p>'}</div><div class="overview-note"><b>${selectedDay===today?'오늘의 한 줄':'이날의 한 줄'}</b><p>${selectedRow?.memo?h(selectedRow.memo):'작성한 메모가 없습니다.'}</p></div></section></div>`;
 }
 
 function chartSvg(item,series,map,period){
@@ -146,7 +164,7 @@ function renderSettings(){
   const list=state.data.items.filter(x=>state.viewArchived?!x.is_active:x.is_active);
   return `<div class="panel settings-panel"><div class="panel-heading"><span class="eyebrow">MAKE IT YOURS</span><h2>${state.viewArchived?'보관한 습관':'습관 설정'}</h2><p>${state.viewArchived?'보관한 항목만 표시합니다. 다시 사용하거나 삭제할 수 있습니다.':'왼쪽 손잡이를 위아래로 끌어 순서를 바꾸세요. 이동하면 자동 저장됩니다.'}</p></div><div class="settings-actions"><button class="outline" data-action="new-item">+ 새 항목</button><button class="text-button" data-action="archived">${state.viewArchived?'사용 중 항목 보기':'보관 항목 보기'}</button></div><div class="settings-list">${list.map(x=>`<div class="setting-row" data-item-id="${h(x.id)}">${state.viewArchived?'<span class="drag-placeholder"></span>':`<button type="button" class="drag-handle" data-drag="${h(x.id)}" aria-label="${h(x.name)} 순서 이동" title="끌어서 순서 이동">⠿</button>`}<div class="setting-icon">${x.item_type==='Boolean'?'✓':x.number_mode==='Record'?'◎':'↗'}</div><div class="setting-info"><b>${h(x.name)}</b><small>${x.item_type==='Boolean'?'완료 체크':x.number_mode==='Record'?'기록형':`목표 ${formatNumber(x.daily_goal)} ${h(x.unit)}`} · ${h(scheduleLabel(x))}${x.is_active?'':' · 보관됨'}</small></div><button class="small-link" data-action="item-edit" data-id="${h(x.id)}">수정</button><button class="small-link delete-link" data-action="item-delete" data-id="${h(x.id)}">삭제</button></div>`).join('')||'<p class="empty">표시할 항목이 없습니다.</p>'}</div></div>
   <div class="panel data-panel"><span class="eyebrow">YOUR DATA</span><h2>데이터 관리</h2><p>기존 Apps Script의 JSON 백업을 가져오거나, 현재 기록을 보관할 수 있습니다.</p><div class="data-buttons"><label class="outline file-label">JSON 가져오기<input type="file" id="importFile" accept=".json,application/json" hidden /></label><button class="outline" data-action="export-json">JSON 백업</button><button class="outline" data-action="export-csv">CSV 다운로드</button></div><p class="muted small">같은 날짜와 항목의 기록은 가져온 값으로 덮어씁니다. 다른 기록은 보존됩니다.</p></div>
-  <div class="panel account-panel"><span class="eyebrow">ACCOUNT</span><h2>계정</h2><p>${h(state.user.email)}</p><button class="outline" data-action="signout">로그아웃</button></div><p class="version">ver1.07 · made by yoonsungho</p>`;
+  <div class="panel account-panel"><span class="eyebrow">ACCOUNT</span><h2>계정</h2><p>${h(state.user.email)}</p><button class="outline" data-action="signout">로그아웃</button></div><p class="version">ver1.09 · made by yoonsungho</p>`;
 }
 
 function itemModal(item){
@@ -155,11 +173,11 @@ function itemModal(item){
   document.querySelector('#itemModal')?.remove();
   const outer=document.createElement('div');outer.id='itemModal';outer.className='modal-overlay';outer.dataset.action='close-item';
   const recordCount=item?state.data.entries.filter(entry=>entry.item_id===item.id).length:0;
-  outer.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-label="습관 설정"><div class="modal-head"><h2>${item?'습관 수정':'새 습관'}</h2><button class="icon-btn" data-action="close-item" aria-label="닫기">✕</button></div><form id="itemForm" class="item-form"><label>이름<input name="name" required maxlength="80" value="${h(x.name)}" placeholder="예: 스트레칭" /></label><div class="form-pair"><label>단위<input name="unit" maxlength="24" value="${h(x.unit)}" placeholder="회, 분, kg" /></label><label>하루 목표<input name="daily_goal" type="number" min="0" step="any" value="${h(x.daily_goal)}" /></label></div><div class="form-pair"><label>종류<select name="item_type"><option value="Number" ${x.item_type==='Number'?'selected':''}>숫자 입력</option><option value="Boolean" ${x.item_type==='Boolean'?'selected':''}>완료 체크</option></select></label><label>입력 방식<select name="number_mode"><option value="Accumulate" ${x.number_mode==='Accumulate'?'selected':''}>합산형</option><option value="Record" ${x.number_mode==='Record'?'selected':''}>기록형</option></select></label></div><fieldset class="schedule-field"><legend>운동·습관을 실천할 요일</legend><div class="weekday-options">${weekdayNames.map((label,index)=>`<label class="weekday-option"><input type="checkbox" name="weekday" value="${index}" ${weekdayMask(x)&(1<<index)?'checked':''} /><span>${label}</span></label>`).join('')}</div><small>최소 하루를 선택하세요. 매일 · 평일 · 주말은 선택에 맞춰 자동 표시됩니다.</small></fieldset><p class="muted">합산형은 추가할 때마다 더합니다. 기록형은 마지막 입력값으로 바뀝니다. 표시 순서는 설정 목록에서 끌어 바꾸세요.</p><div class="modal-actions">${item?`<button type="button" class="outline" data-action="toggle-active" data-id="${h(item.id)}">${item.is_active?'보관하기':'다시 사용'}</button><button type="button" class="outline danger-button" data-action="request-delete" data-id="${h(item.id)}">삭제</button>`:''}<button type="submit" class="primary">설정 저장</button></div>${item?`<div class="delete-confirm" id="deleteConfirm" hidden><strong>${h(item.name)} 항목을 영구 삭제할까요?</strong><p>이 항목의 기록 ${recordCount}건도 함께 삭제되며 복구할 수 없습니다. 과거 기록을 남기려면 '보관하기'를 사용하세요.</p><button type="button" class="danger-button solid" data-action="confirm-delete" data-id="${h(item.id)}">기록까지 영구 삭제</button></div>`:''}</form></div>`;
+  outer.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-label="습관 설정"><div class="modal-head"><h2>${item?'습관 수정':'새 습관'}</h2><button class="icon-btn" data-action="close-item" aria-label="닫기">✕</button></div><form id="itemForm" class="item-form"><label>이름<input name="name" required maxlength="80" value="${h(x.name)}" placeholder="예: 스트레칭" /></label><div class="form-pair"><label>단위<input name="unit" maxlength="24" value="${h(x.unit)}" placeholder="회, 분, kg" /></label><label>하루 목표<input name="daily_goal" type="number" min="0" step="any" value="${h(x.daily_goal)}" /></label></div><div class="form-pair"><label>종류<select name="item_type"><option value="Number" ${x.item_type==='Number'?'selected':''}>숫자 입력</option><option value="Boolean" ${x.item_type==='Boolean'?'selected':''}>완료 체크</option></select></label><label>입력 방식<select name="number_mode"><option value="Accumulate" ${x.number_mode==='Accumulate'?'selected':''}>합산형</option><option value="Record" ${x.number_mode==='Record'?'selected':''}>기록형</option></select></label></div><fieldset class="schedule-field"><legend>운동·습관을 실천할 요일</legend><div class="weekday-options">${weekdayNames.map((label,index)=>`<label class="weekday-option"><input type="checkbox" name="weekday" value="${index}" ${weekdayMask(x)&(1<<index)?'checked':''} /><span>${label}</span></label>`).join('')}</div><label>요일 변경 적용일<input type="date" name="schedule_from" min="${todayKST()}" value="${todayKST()}" required /></label><small>오늘 또는 미래 날짜부터 적용합니다. 이전 날짜의 요일은 유지됩니다.</small>${x.schedule_history?.length?`<small>요일 이력: ${x.schedule_history.map(entry=>`${entry.from==='0001-01-01'?'기존':h(entry.from)} · ${h(scheduleLabel({schedule_days:entry.days}))}`).join(' / ')}</small>`:''}<small>최소 하루를 선택하세요. 매일 · 평일 · 주말은 선택에 맞춰 자동 표시됩니다.</small></fieldset><p class="muted">합산형은 추가할 때마다 더합니다. 기록형은 마지막 입력값으로 바뀝니다. 표시 순서는 설정 목록에서 끌어 바꾸세요.</p><div class="modal-actions">${item?`<button type="button" class="outline" data-action="toggle-active" data-id="${h(item.id)}">${item.is_active?'보관하기':'다시 사용'}</button><button type="button" class="outline danger-button" data-action="request-delete" data-id="${h(item.id)}">삭제</button>`:''}<button type="submit" class="primary">설정 저장</button></div>${item?`<div class="delete-confirm" id="deleteConfirm" hidden><strong>${h(item.name)} 항목을 영구 삭제할까요?</strong><p>이 항목의 기록 ${recordCount}건도 함께 삭제되며 복구할 수 없습니다. 과거 기록을 남기려면 '보관하기'를 사용하세요.</p><button type="button" class="danger-button solid" data-action="confirm-delete" data-id="${h(item.id)}">기록까지 영구 삭제</button></div>`:''}</form></div>`;
   document.body.append(outer);
 }
 
-function render(){setTheme();root.innerHTML=!configured?`<div class="setup-error"><span class="logo">↗</span><h1>설정이 필요합니다</h1><p>프로젝트의 환경 변수 VITE_SUPABASE_URL과 VITE_SUPABASE_PUBLISHABLE_KEY를 등록한 뒤 다시 배포하세요.</p><p>설치 순서는 README.md를 확인하세요.</p></div>`:state.authMode==='password'?authView():state.user?(state.data?layout():'<div class="loading-page">기록을 불러오는 중…</div>'):authView();}
+function render(){setTheme();root.innerHTML=!configured?`<div class="setup-error"><span class="logo">↗</span><h1>설정이 필요합니다</h1><p>프로젝트의 환경 변수 VITE_SUPABASE_URL과 VITE_SUPABASE_PUBLISHABLE_KEY를 등록한 뒤 다시 배포하세요.</p><p>설치 순서는 README.md를 확인하세요.</p></div>`:state.authMode==='password'?authView():state.user?(state.data?layout():'<div class="loading-page">기록을 불러오는 중…</div>'):authView();if(state.user&&state.data&&state.tab==='today')applyTodayFilter();refreshSaveBadge();}
 
 async function reload(){
   if(!state.user)return;
@@ -230,6 +248,7 @@ document.addEventListener('click',async e=>{
 });
 
 document.addEventListener('change',e=>{
+  if(e.target.id==='todayFilter'){localStorage.setItem('habit_view_'+state.user.id,e.target.value);applyTodayFilter();}
   if(e.target.id==='chartItem'){state.chartItem=e.target.value;render();}
   if(e.target.id==='chartPeriod'){state.period=e.target.value;render();}
   if(e.target.id==='recordPeriod'){state.recordPeriod=e.target.value;render();}
@@ -264,6 +283,7 @@ async function toggleBoolean(input){
     document.querySelector('.welcome-panel p:last-child').textContent=`목표 ${target.length}개 중 ${achieved}개 달성 · ${percent}%`;
     document.querySelector('.progress-ring').style.setProperty('--progress',percent+'%');
     document.querySelector('.progress-ring b').textContent=percent+'%';
+      applyTodayFilter();
   }catch(err){input.checked=!next;toast(`체크 저장 실패: ${errorText(err)}`,true);}
   finally{input.disabled=false;showBusy(false);}
 }
@@ -381,6 +401,12 @@ document.addEventListener('submit',async e=>{
       const item={...previous,name:String(fd.get('name')||'').trim(),unit:String(fd.get('unit')||''),daily_goal:Number(fd.get('daily_goal')),
         item_type:fd.get('item_type'),number_mode:fd.get('number_mode'),schedule_days:scheduleDays,display_order:previous?.display_order??state.data.items.length+1,is_active:previous?.is_active??true};
       if(!item.name||!Number.isFinite(item.daily_goal)||item.daily_goal<0)throw Error('이름과 목표 값을 확인하세요.');
+      const from=String(fd.get('schedule_from')||todayKST());
+      if(from<todayKST())throw Error('요일 적용일은 오늘 또는 미래 날짜로 선택하세요.');
+      const baseline=previous||{schedule_days:127};
+      item.schedule_days=Number(baseline.schedule_days??127);
+      item.schedule_history=previous?.schedule_history||[];
+      if(!previous||scheduleDays!==weekdayMask(previous,from))item.schedule_history=changeSchedule(baseline,scheduleDays,from);
       await saveItem(item,state.user.id);document.querySelector('#itemModal')?.remove();await reload();toast('습관 설정을 저장했습니다.');
     }
   }catch(err){toast(errorText(err),true);}finally{showBusy(false);}
@@ -392,7 +418,7 @@ function download(content,name,type){
 }
 function exportJSON(){
   const {items,entries,notes}=state.data;
-  const settings=items.map(x=>({ItemName:x.name,Unit:x.unit,DailyGoal:Number(x.daily_goal),IsActive:x.is_active,DisplayOrder:x.display_order,ItemType:x.item_type,NumberMode:x.number_mode,ScheduleDays:weekdayMask(x)}));
+  const settings=items.map(x=>({ItemName:x.name,Unit:x.unit,DailyGoal:Number(x.daily_goal),IsActive:x.is_active,DisplayOrder:x.display_order,ItemType:x.item_type,NumberMode:x.number_mode,ScheduleDays:Number(x.schedule_days??127),ScheduleHistory:x.schedule_history||[]}));
   const map=rowsByDay(entries,notes),records=[...map.values()].sort((a,b)=>a.day.localeCompare(b.day)).map(row=>{
     const result={Date:row.day,Memo:row.memo};
     for(const item of items)if(row.values[item.id]!==undefined)result[item.name]=row.values[item.id];
@@ -420,6 +446,7 @@ async function importJSON(file){
     for(const entry of backup.settings){
       const name=String(entry.ItemName||'').trim();
       if(!name||planned.has(name))throw Error('백업에 이름이 비어 있거나 중복된 항목이 있습니다.');
+      if(entry.ScheduleHistory!==undefined&&(!Array.isArray(entry.ScheduleHistory)||entry.ScheduleHistory.some(x=>!/^\d{4}-\d{2}-\d{2}$/.test(x.from)||!Number.isInteger(x.days)||x.days<1||x.days>127)))throw Error('요일 변경 이력이 올바르지 않습니다.');
       planned.add(name);
     }
     const dates=new Set();
@@ -436,9 +463,10 @@ async function importJSON(file){
     const settings=backup.settings.map((x,i)=>({
       ...known.get(String(x.ItemName).trim()),name:String(x.ItemName).trim(),unit:String(x.Unit||''),
       daily_goal:Math.max(0,Number(x.DailyGoal)||0),is_active:x.IsActive===true||x.IsActive==='TRUE'||x.IsActive==='true'||x.IsActive===1,
-      item_type:x.ItemType==='Boolean'?'Boolean':'Number',number_mode:x.NumberMode==='Record'?'Record':'Accumulate',schedule_days:Number.isInteger(Number(x.ScheduleDays))&&Number(x.ScheduleDays)>=1&&Number(x.ScheduleDays)<=127?Number(x.ScheduleDays):127,display_order:Number(x.DisplayOrder)||i+1
+      item_type:x.ItemType==='Boolean'?'Boolean':'Number',number_mode:x.NumberMode==='Record'?'Record':'Accumulate',schedule_history:x.ScheduleHistory||[],schedule_days:Number.isInteger(Number(x.ScheduleDays))&&Number(x.ScheduleDays)>=1&&Number(x.ScheduleDays)<=127?Number(x.ScheduleDays):127,display_order:Number(x.DisplayOrder)||i+1
     }));
     for(const name of planned)if(!settings.some(x=>x.name===name))settings.push({...known.get(name),name,unit:'',daily_goal:0,item_type:'Number',number_mode:'Accumulate',schedule_days:127,is_active:false,display_order:settings.length+1});
+    await trackSave(async()=>{
     // 저장 전에 JSON을 전부 검증합니다. 같은 항목/날짜는 백업 값으로 덮어씁니다.
     for(const item of settings){const saved=await saveItem(item,state.user.id);known.set(saved.name,saved);}
     const entryRows=[],noteRows=[];
@@ -451,6 +479,7 @@ async function importJSON(file){
     }
     for(let i=0;i<entryRows.length;i+=400){const {error}=await supabase.from('habit_entries').upsert(entryRows.slice(i,i+400),{onConflict:'user_id,day,item_id'});if(error)throw error;}
     for(let i=0;i<noteRows.length;i+=400){const {error}=await supabase.from('habit_notes').upsert(noteRows.slice(i,i+400),{onConflict:'user_id,day'});if(error)throw error;}
+    });
     await reload();toast(`${backup.records.length}일의 백업을 가져왔습니다.`);
   }catch(err){toast(`가져오기 실패: ${errorText(err)}`,true);}finally{showBusy(false);}
 }

@@ -69,7 +69,7 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .edit-row input:not([type=checkbox]){width:115px!important}
 }
 
-/* ver1.07: 요일 배지를 화면 크기에 따라 배치합니다. */
+/* ver1.09: 요일 배지를 화면 크기에 따라 배치합니다. */
 :root{--blue:#345dba;--blue-soft:#e7edff;--amber:#a45c16;--amber-soft:#fff0d5}
 :root[data-theme='dark']{--blue:#9bb9ff;--blue-soft:#253654;--amber:#ffd08d;--amber-soft:#4a3623}
 .topbar p{font-size:17px;font-weight:700;color:var(--ink)}
@@ -109,6 +109,14 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
 .habit-card.rest-day{border-style:dashed}
 .schedule-chip.schedule-weekday{background:#e2f3e8;color:#21643d}
 .schedule-chip.schedule-weekend{background:#ffe6e6;color:#ae3434}
+.schedule-chip.schedule-day{background:var(--amber-soft);color:var(--amber)}
+.habit-card[hidden]{display:none!important}
+.today-filter{display:inline-flex;align-items:center;gap:8px;margin:10px 0;font-size:15px}
+.today-filter select{padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit}
+.save-status{display:inline-block;font-size:12px;font-weight:700;border-radius:8px;padding:5px 9px;margin-top:7px;background:var(--blue-soft);color:var(--blue)}
+.save-status[data-status='saved']{background:var(--mint);color:var(--forest2)}
+.save-status[data-status='saving']{background:var(--amber-soft);color:var(--amber)}
+.save-status[data-status='failed']{background:#ffe6e6;color:#ae3434}
 :root[data-theme='dark'] .schedule-chip.schedule-weekday{background:#203e2d;color:#a1e3b5}
 :root[data-theme='dark'] .schedule-chip.schedule-weekend{background:#4b272b;color:#ffaaaa}
 .status-list small{color:var(--muted);font-size:.78em}

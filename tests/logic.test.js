@@ -1,10 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {shiftDay,dayRange,startDay,rowsByDay,completed,streak,chartBuckets,summarize,scheduledOn,scheduleLabel} from '../src/logic.js';
+import {shiftDay,dayRange,startDay,rowsByDay,completed,streak,chartBuckets,summarize,scheduledOn,scheduleLabel,weekdayMask,changeSchedule} from '../src/logic.js';
 
 const accumulate={id:'a',name:'걷기',unit:'분',daily_goal:30,item_type:'Number',number_mode:'Accumulate'};
 const record={id:'r',name:'체중',unit:'kg',daily_goal:0,item_type:'Number',number_mode:'Record'};
 const check={id:'b',name:'독서',unit:'완료',daily_goal:1,item_type:'Boolean',number_mode:'Accumulate'};
+
+test('요일 변경은 적용일 이후에만 반영하고 미래 예약과 JSON 복원에도 유지한다',()=>{
+  const item={...check,schedule_days:31};
+  item.schedule_history=changeSchedule(item,96,'2026-10-12');
+  item.schedule_history=changeSchedule(item,127,'2026-11-01');
+  assert.equal(weekdayMask(item,'2026-10-11'),31);
+  assert.equal(weekdayMask(item,'2026-10-12'),96);
+  assert.equal(weekdayMask(item,'2026-11-01'),127);
+  assert.equal(scheduledOn(item,'2026-10-09'),true);
+  assert.equal(scheduledOn(item,'2026-10-16'),false);
+  const copy=JSON.parse(JSON.stringify(item));
+  assert.equal(scheduleLabel(copy,'2026-10-10'),'평일');
+  assert.equal(scheduleLabel(copy,'2026-10-18'),'주말');
+  const map=rowsByDay([{day:'2026-10-09',item_id:'b',value:1}],[]);
+  assert.equal(summarize(copy,['2026-10-09'],map,'2026-10-09')[1][1],'100%');
+});
 
 test('연말·윤년 날짜를 넘어도 일별 계산이 유지된다',()=>{
   assert.equal(shiftDay('2024-02-28',1),'2024-02-29');

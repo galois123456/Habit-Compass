@@ -27,6 +27,19 @@ async function checked(query) {
   if (error) throw error;
   return data;
 }
+let pendingWrites=0,writeFailed=false;
+export async function trackSave(task){
+  if(!pendingWrites)writeFailed=false;
+  pendingWrites++;
+  window.dispatchEvent(new CustomEvent('habit-save',{detail:'saving'}));
+  try{return await task();}
+  catch(error){writeFailed=true;throw error;}
+  finally{
+    pendingWrites--;
+    window.dispatchEvent(new CustomEvent('habit-save',{detail:pendingWrites?'saving':writeFailed?'failed':'saved'}));
+  }
+}
+function write(query){return trackSave(()=>checked(query));}
 
 async function allRows(table, userId, order) {
   const result = [];
@@ -52,21 +65,21 @@ export async function loadAll(userId) {
 }
 
 export async function addDay(day,values,memo) {
-  await checked(supabase.rpc('add_daily_entries',{p_day:day,p_values:values,p_memo:memo}));
+  await write(supabase.rpc('add_daily_entries',{p_day:day,p_values:values,p_memo:memo}));
 }
 
 export async function replaceDay(day,values,memo) {
-  await checked(supabase.rpc('replace_daily_entries',{p_day:day,p_values:values,p_memo:memo}));
+  await write(supabase.rpc('replace_daily_entries',{p_day:day,p_values:values,p_memo:memo}));
 }
 
 export async function saveItem(item,userId) {
   const payload = {
     user_id:userId,name:item.name.trim(),unit:item.unit.trim(),daily_goal:item.item_type === 'Boolean' ? 1 : Number(item.daily_goal),
     item_type:item.item_type,number_mode:item.item_type === 'Boolean' ? 'Accumulate' : item.number_mode,
-    display_order:Number(item.display_order),is_active:item.is_active,schedule_days:Number(item.schedule_days??127)
+    display_order:Number(item.display_order),is_active:item.is_active,schedule_days:Number(item.schedule_days??127),schedule_history:item.schedule_history||[]
   };
   if (item.id) payload.id = item.id;
-  return checked(supabase.from('habit_items').upsert(payload).select().single());
+  return write(supabase.from('habit_items').upsert(payload).select().single());
 }
 
 export async function updateActive(item,active,userId) {
@@ -74,14 +87,14 @@ export async function updateActive(item,active,userId) {
 }
 
 export async function deleteItem(itemId,userId) {
-  return checked(supabase.from('habit_items').delete().eq('id',itemId).eq('user_id',userId).select('id').single());
+  return write(supabase.from('habit_items').delete().eq('id',itemId).eq('user_id',userId).select('id').single());
 }
 
 export async function saveOrder(items,userId) {
-  return checked(supabase.from('habit_items').upsert(items.map((item,index)=>({
+  return write(supabase.from('habit_items').upsert(items.map((item,index)=>({
     id:item.id,user_id:userId,name:item.name,unit:item.unit,daily_goal:item.daily_goal,
     item_type:item.item_type,number_mode:item.number_mode,is_active:item.is_active,schedule_days:Number(item.schedule_days??127),
-    display_order:index+1
+    display_order:index+1,schedule_history:item.schedule_history||[]
   })),{onConflict:'id'}).select('id,display_order'));
 }
 
@@ -96,6 +109,5 @@ export async function setBoolean(itemId,day,checked,userId) {
 }
 
 async function checkedResult(query) {
-  const {error}=await query;
-  if(error)throw error;
+  await write(query);
 }

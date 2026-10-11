@@ -39,16 +39,22 @@ export function rowsByDay(entries,notes) {
 
 // 월요일부터 일요일까지 하위 7비트로 저장합니다. 기존 항목은 매일(127)입니다.
 export const weekdayNames=['월','화','수','목','금','토','일'];
-export function weekdayMask(item) {
-  const value=Number(item?.schedule_days);
+export function weekdayMask(item,day=todayKST()) {
+  const history=(item?.schedule_history||[]).filter(x=>x.from<=day).sort((a,b)=>a.from.localeCompare(b.from));
+  const value=Number(history.at(-1)?.days??item?.schedule_days);
   return Number.isInteger(value)&&value>=1&&value<=127?value:127;
+}
+export function changeSchedule(item,days,from){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!Number.isInteger(days)||days<1||days>127)throw Error('요일과 적용일을 확인하세요.');
+  const history=item.schedule_history?.length?[...item.schedule_history]:[{from:'0001-01-01',days:Number(item.schedule_days??127)}];
+  return [...history.filter(x=>x.from!==from),{from,days}].sort((a,b)=>a.from.localeCompare(b.from));
 }
 export function scheduledOn(item,day) {
   const weekday=(new Date(`${day}T00:00:00Z`).getUTCDay()+6)%7;
-  return Boolean(weekdayMask(item)&(1<<weekday));
+  return Boolean(weekdayMask(item,day)&(1<<weekday));
 }
-export function scheduleLabel(item) {
-  const mask=weekdayMask(item);
+export function scheduleLabel(item,day=todayKST()) {
+  const mask=weekdayMask(item,day);
   if(mask===127)return '매일';
   if(mask===31)return '평일';
   if(mask===96)return '주말';

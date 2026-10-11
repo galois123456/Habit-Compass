@@ -21,6 +21,9 @@ create table if not exists public.habit_items (
 alter table public.habit_items add column if not exists schedule_days smallint not null default 127;
 alter table public.habit_items drop constraint if exists habit_items_schedule_days_check;
 alter table public.habit_items add constraint habit_items_schedule_days_check check (schedule_days between 1 and 127);
+alter table public.habit_items add column if not exists schedule_history jsonb not null default '[]'::jsonb;
+alter table public.habit_items drop constraint if exists habit_items_schedule_history_check;
+alter table public.habit_items add constraint habit_items_schedule_history_check check (jsonb_typeof(schedule_history) = 'array');
 
 create table if not exists public.habit_entries (
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
