@@ -1,8 +1,8 @@
 > **이번 버전은 하나의 Supabase 프로젝트를 두 앱이 공유하도록 준비한 배포본입니다. 먼저 `공통프로젝트_연결안내.md`를 읽고 `supabase/shared-schema.sql`을 실행하세요. 아래의 개별 설치 안내보다 공통 연결 안내를 우선합니다.**
 
-# 습관 나침반 ver1.09
+# 습관 나침반 ver1.10
 
-## ver1.09 업데이트 — 먼저 확인하세요
+## ver1.10 업데이트 — 먼저 확인하세요
 
 이미 설치된 프로젝트는 **`supabase/add-schedule-history.sql`을 SQL Editor에서 한 번 실행**한 뒤 앱 파일을 배포하세요. ver1.04 이하라면 `add-schedule-days.sql`도 먼저 실행합니다. 기존 기록은 삭제하지 않습니다.
 
@@ -89,4 +89,4 @@ Supabase Auth가 비밀번호를 처리합니다. 웹앱 코드에 비밀번호�
 | `supabase/schema.sql` | 데이터 표, 보안 정책, 원자적 기록 저장 함수 |
 | `public/manifest.webmanifest` | 홈 화면 바로가기 설정 |
 
-현재 버전은 `ver1.09`입니다. 기존 프로젝트에는 문서 맨 위의 요일 이력 SQL을 실행하고 앱 파일을 GitHub에 올리세요. Vercel 배포가 완료되면 새로고침하세요. 화면 하단에 `made by yoonsungho`가 표시됩니다.
+현재 버전은 `ver1.10`입니다. 기존 프로젝트에는 문서 맨 위의 요일 이력 SQL을 실행하고 앱 파일을 GitHub에 올리세요. Vercel 배포가 완료되면 새로고침하세요. 화면 하단에 `made by yoonsungho`가 표시됩니다.

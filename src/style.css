@@ -69,7 +69,7 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .edit-row input:not([type=checkbox]){width:115px!important}
 }
 
-/* ver1.09: 요일 배지를 화면 크기에 따라 배치합니다. */
+/* ver1.10: 제목과 필터를 한 줄로 정리합니다. */
 :root{--blue:#345dba;--blue-soft:#e7edff;--amber:#a45c16;--amber-soft:#fff0d5}
 :root[data-theme='dark']{--blue:#9bb9ff;--blue-soft:#253654;--amber:#ffd08d;--amber-soft:#4a3623}
 .topbar p{font-size:17px;font-weight:700;color:var(--ink)}
@@ -111,7 +111,7 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
 .schedule-chip.schedule-weekend{background:#ffe6e6;color:#ae3434}
 .schedule-chip.schedule-day{background:var(--amber-soft);color:var(--amber)}
 .habit-card[hidden]{display:none!important}
-.today-filter{display:inline-flex;align-items:center;gap:8px;margin:10px 0;font-size:15px}
+.today-filter{display:inline-flex;align-items:center;gap:8px;margin:0;font-size:15px;flex:none}
 .today-filter select{padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit}
 .save-status{display:inline-block;font-size:12px;font-weight:700;border-radius:8px;padding:5px 9px;margin-top:7px;background:var(--blue-soft);color:var(--blue)}
 .save-status[data-status='saved']{background:var(--mint);color:var(--forest2)}
@@ -144,4 +144,25 @@ html,body,#app{width:100%;max-width:100%;overflow-x:clip}
   .habit-current{margin-left:auto}
   .habit-current .achievement-mark{width:17px;height:17px}
   .habit-current .achievement-mark.scheduled>span{width:7px;height:7px}
+}
+
+.topbar{display:block;margin-bottom:26px}
+.title-row{display:flex;align-items:center;gap:12px;min-width:0;margin:3px 0 6px}
+.title-row h1{margin:0;white-space:nowrap}
+.title-row .save-status{margin:0;flex:none}
+.title-row .top-actions{margin-left:auto;flex:none}
+.today-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:23px 0 13px}
+.today-section-title h2{margin:0}
+@media(max-width:590px){
+  .topbar{margin-bottom:21px}
+  .title-row{gap:7px;margin-bottom:5px}
+  .title-row h1{font-size:clamp(21px,6.5vw,28px);letter-spacing:-.05em}
+  .title-row .save-status{font-size:11px;padding:5px 6px;max-width:88px;line-height:1.35}
+  .title-row .icon-btn{min-width:36px;width:36px;height:36px}
+  .today-section-title{margin:20px 0 11px;gap:8px}
+  .today-section-title h2{font-size:21px}
+  .today-filter select{padding:7px 9px;font-size:15px}
+  .habit-grid{gap:9px}
+  .habit-card{padding:15px}
+  .memo-panel{margin-top:12px;padding:16px}
 }
